@@ -4,6 +4,10 @@ package manager]].
 
 - Magix is simple and stupid.
 - Magix is a tiny wrapper around =nix-build=.
+- Magix uses a Nix expression templates, and so, is easier to understand,
+  modify, and enhance.
+- Magix is heavily tested (only unit tests at the moment, but please drop a pull
+  request).
 
 * Supported languages
 ** Bash
@@ -45,7 +49,7 @@ xs = array([1,2,3])
 print(xs)
 #+end_src
 
-* Try
+* Try Magix
 Try Magix without installation on a Bash script called [[file:test-scripts/bash/empty][=empty=]]
 #+name: Try
 #+begin_src sh :exports both :results verbatim
@@ -107,8 +111,15 @@ Available options:
 I have performed basic benchmarks and have recorded some profiles. When a script
 is cached, *Magix has a runtime cost of around 20ms*.
 
-The runtime cost depends on the used language because the wrappers differ.
+The runtime cost depends on the used language because the Nix expressions used
+to wrap the script are different.
 
-* Nix-script
-Magix was heavily inspired by [[https://github.com/BrianHicks/nix-script][nix-script]], which [[https://github.com/dschrempf/nix-script][I also maintain]]. However, my
-Rust is a bit rusty, and I wanted a simpler solution.
+* Similar tools that I know of
+- [[bennofs/nix-script]]: Does not pre-compile scripts, does not cache compilations;
+  however, Haskell code base and complexity seems to be much smaller.
+- [[https://github.com/BrianHicks/nix-script][BrianHicks/nix-script]]: Magix was heavily inspired by [[https://github.com/BrianHicks/nix-script][BrianHicks/nix-script]],
+  which [[https://github.com/dschrempf/nix-script][I also maintain]]. However, my Rust is a bit rusty, and I wanted a simpler
+  solution.
+
+I want =magix= to be a *simple and fast solution* that just works. If you are
+looking for a wrapper with more extras, try the [[https://github.com/NixOS/nix][Nix package manager ;-)]].
