@@ -115,7 +115,7 @@ The runtime cost depends on the used language because the Nix expressions used
 to wrap the script are different.
 
 * Similar tools that I know of
-- [[bennofs/nix-script]]: Does not pre-compile scripts, does not cache compilations;
+- [[https://github.com/bennofs/nix-script][bennofs/nix-script]]: Does not pre-compile scripts, does not cache compilations;
   however, Haskell code base and complexity seems to be much smaller.
 - [[https://github.com/BrianHicks/nix-script][BrianHicks/nix-script]]: Magix was heavily inspired by [[https://github.com/BrianHicks/nix-script][BrianHicks/nix-script]],
   which [[https://github.com/dschrempf/nix-script][I also maintain]]. However, my Rust is a bit rusty, and I wanted a simpler
