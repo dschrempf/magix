@@ -20,6 +20,8 @@ package manager]].
 jq --help
 #+end_src
 
+[[file:src/Magix/Languages/Bash/Template.nix][Bash Nix expression template]].
+
 ** Haskell
 #+name: HaskellExample
 #+begin_src haskell :session ghci :exports code :results none
@@ -36,6 +38,8 @@ main :: IO ()
 main = BS.putStr "Hello, World!\n"
 #+end_src
 
+[[file:src/Magix/Languages/Haskell/Template.nix][Haskell Nix expression template]].
+
 ** Python
 #+name: PythonExample
 #+begin_src python :exports code :results none
@@ -48,6 +52,8 @@ from numpy import array
 xs = array([1,2,3])
 print(xs)
 #+end_src
+
+[[file:src/Magix/Languages/Python/Template.nix][Python Nix expression template]].
 
 * Try Magix
 Try Magix without installation on a Bash script called [[file:test-scripts/bash/empty][=empty=]]
