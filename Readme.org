@@ -4,8 +4,8 @@ package manager]].
 
 - Magix is simple and stupid.
 - Magix is a tiny wrapper around =nix-build=.
-- Magix uses a Nix expression templates, and so, is easier to understand,
-  modify, and enhance.
+- Magix uses Nix expression templates, and so, is easy to understand, modify,
+  and enhance.
 - Magix is heavily tested (only unit tests at the moment, but please drop a pull
   request).
 
