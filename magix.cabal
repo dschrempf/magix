@@ -106,9 +106,9 @@ executable magix
     , text
 
 test-suite test-magix
-  import:          common, test
-  main-is:         Spec.hs
-  hs-source-dirs:  test
+  import:             common, test
+  main-is:            Spec.hs
+  hs-source-dirs:     test
   other-modules:
     Magix.BuildSpec
     Magix.Directives.CommonSpec
@@ -124,7 +124,7 @@ test-suite test-magix
 
   autogen-modules:
   ghc-options:
-  type:            exitcode-stdio-1.0
+  type:               exitcode-stdio-1.0
   build-depends:
     , base        >=4.7 && <5
     , bytestring
@@ -136,3 +136,5 @@ test-suite test-magix
     , random
     , text
     , unix
+
+  build-tool-depends: hspec-discover:hspec-discover
