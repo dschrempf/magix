@@ -117,9 +117,6 @@ Available options:
 I have performed basic benchmarks and have recorded some profiles. When a script
 is cached, *Magix has a runtime cost of around 20ms*.
 
-The runtime cost depends on the used language because the Nix expressions used
-to wrap the script are different.
-
 * Similar tools that I know of
 - [[https://github.com/bennofs/nix-script][bennofs/nix-script]]: Does not pre-compile scripts, does not cache compilations;
   however, Haskell code base and complexity seems to be much smaller.
