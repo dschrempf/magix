@@ -56,26 +56,16 @@ print(xs)
 [[file:src/Magix/Languages/Python/Template.nix][Python Nix expression template]].
 
 * Try
-Try Magix without installation on a Bash script called [[file:test-scripts/bash/empty][=empty=]]
+Try Magix without installation on a Bash script called [[file:test-scripts/bash/args][=args=]]
 #+name: Try
 #+begin_src sh :exports both :results verbatim
-  wget https://github.com/dschrempf/magix/raw/refs/heads/main/test-scripts/bash/empty
-  nix run github:dschrempf/magix#magix empty
+  wget https://github.com/dschrempf/magix/raw/refs/heads/main/test-scripts/bash/args
+  nix run github:dschrempf/magix#magix -- args one two tree -h
 #+end_src
 
 #+RESULTS: Try
-: empty
-
-* Install
-Install Magix, and, for example, run the [[file:test-scripts/bash/args][=args= test script for Bash]]
-#+name: Run
-#+begin_src sh :exports both :results verbatim
-  ./test-scripts/bash/args one two three -h
-#+end_src
-
-#+RESULTS: Run
 : Command basename is: args
-: Command line arguments are: one two three -h
+: Command line arguments are: one two tree -h
 
 * Get help
 #+name: Help
