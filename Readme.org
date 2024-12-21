@@ -111,7 +111,6 @@ Available options:
   Nix expressions are syntactically correct.
 - We create random caches and hashes during tests. We could write an Arbitrary
   instance for =Config= to simplify this process.
-- CICD pipeline.
 
 * Notes about performance
 I have performed basic benchmarks and have recorded some profiles. When a script
