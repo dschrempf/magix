@@ -4,16 +4,20 @@ set -e
 
 LANGUAGES=("bash" "haskell" "python")
 
+# TODO: Need to use v1 commands: https://github.com/haskell/cabal/issues/8434.
+build="v1-build"
+test="v1-test"
+
 # Clean up.
 echo "Cleaning up"
 cabal clean
 
 # Build and test.
 echo "Building"
-cabal build all
+cabal $build
 
 echo "Testing"
-cabal test
+cabal $test
 
 # Sample scripts.
 CACHE_PATH=$(mktemp -u -d -t magix-XXXXXX)
