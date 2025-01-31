@@ -57,11 +57,9 @@ build :: Config -> Text -> IO ()
 build c e = do
   -- Remove any previous builds.
   removeBuild c
-  -- Make sure the cache directory exists.
-  createDirectoryIfMissing True c.cacheDir
   -- Create sanitized link to script.
   createSymbolicLink c.scriptPath c.scriptLinkPath
-  -- Build directory.
+  -- Recreate the build directory.
   createDirectoryIfMissing True c.buildDir
   -- Expression.
   let exprPath = buildExprPath c
@@ -70,4 +68,7 @@ build c e = do
   callProcess "nix-build" ["--out-link", c.resultLinkPath, c.buildDir]
 
 withBuildLock :: Config -> IO () -> IO ()
-withBuildLock c f = withFileLock c.lockPath Exclusive $ const f
+withBuildLock c f = do
+  -- Make sure the cache directory exists.
+  createDirectoryIfMissing True c.cacheDir
+  withFileLock c.lockPath Exclusive $ const f

@@ -1,4 +1,4 @@
-cabal-version:      3.4
+cabal-version:      3.14
 name:               magix
 version:            0.2.0.0
 synopsis:

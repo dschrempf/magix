@@ -16,7 +16,7 @@ echo "Testing"
 cabal test
 
 # Sample scripts.
-CACHE_PATH=$(mktemp -d -t magix-XXXXXX)
+CACHE_PATH=$(mktemp -u -d -t magix-XXXXXX)
 echo "Temporary cache path is ${CACHE_PATH}"
 for l in "${LANGUAGES[@]}"; do
     echo "Running sample scripts for language ${l}"
@@ -28,7 +28,7 @@ for l in "${LANGUAGES[@]}"; do
 done
 
 # Parallel builds.
-CACHE_PATH_PARALLEL=$(mktemp -d -t magix-XXXXXX)
+CACHE_PATH_PARALLEL=$(mktemp -u -d -t magix-XXXXXX)
 echo "Temporary cache path for parallel builds is ${CACHE_PATH_PARALLEL}"
 for l in "${LANGUAGES[@]}"; do
     echo "Running parallel builds for language ${l}"
