@@ -1,5 +1,5 @@
 #!/usr/bin/env magix
 #!magix bash
-#!runtimeInputs jq
+#!packages jq
 
 jq --help

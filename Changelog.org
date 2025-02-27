@@ -1,0 +1,4 @@
+* Unreleased
+
+* Version 0.3.0.0
+- Consistently use the word /package/ across languages: =runtimeInputs= -> =packages= .

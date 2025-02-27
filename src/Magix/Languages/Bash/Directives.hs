@@ -19,11 +19,11 @@ import Data.Text (Text)
 import Magix.Directives.Common (Parser, pDirectiveWithValues, pLanguageDirectives)
 import Prelude hiding (readFile)
 
-newtype BashDirectives = BashDirectives {_runtimeInputs :: [Text]}
+newtype BashDirectives = BashDirectives {_packages :: [Text]}
   deriving (Eq, Show, Semigroup, Monoid)
 
-pRuntimeInputs :: Parser BashDirectives
-pRuntimeInputs = BashDirectives <$> pDirectiveWithValues "runtimeInputs"
+pPackages :: Parser BashDirectives
+pPackages = BashDirectives <$> pDirectiveWithValues "packages"
 
 pBashDirectives :: Parser BashDirectives
-pBashDirectives = pLanguageDirectives "bash" pRuntimeInputs mconcat
+pBashDirectives = pLanguageDirectives "bash" pPackages mconcat

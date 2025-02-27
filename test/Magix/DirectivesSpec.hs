@@ -42,7 +42,7 @@ spaceTest =
   unlines
     [ "#!/usr/bin/env magix",
       "#!magix bash",
-      "#!runtimeInputs a ",
+      "#!packages a ",
       ""
     ]
 
@@ -51,7 +51,7 @@ newlineTest =
   unlines
     [ "#!/usr/bin/env magix",
       "#!magix bash",
-      "#!runtimeInputs a",
+      "#!packages a",
       ""
     ]
 
