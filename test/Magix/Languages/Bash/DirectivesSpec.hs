@@ -27,16 +27,16 @@ minimal :: Text
 minimal =
   unlines
     [ "#!magix bash",
-      "#!runtimeInputs jq"
+      "#!packages jq"
     ]
 
 multiple :: Text
 multiple =
   unlines
     [ "#!magix bash",
-      "#!runtimeInputs a",
-      "#!runtimeInputs b c",
-      "#!runtimeInputs d e f"
+      "#!packages a",
+      "#!packages b c",
+      "#!packages d e f"
     ]
 
 spec :: Spec

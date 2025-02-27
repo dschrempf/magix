@@ -19,4 +19,4 @@ import Magix.Languages.Bash.Directives (BashDirectives (..))
 import Prelude hiding (unwords)
 
 getBashReplacements :: BashDirectives -> [(Text, Text)]
-getBashReplacements (BashDirectives ps) = [("__RUNTIME_INPUTS__", unwords ps)]
+getBashReplacements (BashDirectives ps) = [("__PACKAGES__", unwords ps)]

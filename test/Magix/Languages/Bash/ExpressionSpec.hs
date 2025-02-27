@@ -20,11 +20,11 @@ import Magix.Languages.Bash.Directives (BashDirectives (..))
 import Magix.Tools (testExpression)
 import Test.Hspec (Spec)
 
-runtimeInputs :: [Text]
-runtimeInputs = ["fake", "inputs"]
+packages :: [Text]
+packages = ["fake", "inputs"]
 
 bashDirectives :: Directives
-bashDirectives = Bash $ BashDirectives runtimeInputs
+bashDirectives = Bash $ BashDirectives packages
 
 spec :: Spec
-spec = testExpression bashDirectives [runtimeInputs]
+spec = testExpression bashDirectives [packages]

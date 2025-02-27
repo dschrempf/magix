@@ -5,7 +5,7 @@
 pkgs.writeShellApplication {
   name = "__SCRIPT_NAME__";
 
-  runtimeInputs = with pkgs; [ __RUNTIME_INPUTS__ ];
+  runtimeInputs = with pkgs; [ __PACKAGES__ ];
 
   text = ''
     BASH_ARGV0="__SCRIPT_NAME__"

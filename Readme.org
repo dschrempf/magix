@@ -15,7 +15,7 @@ package manager]].
 #+begin_src sh :exports code
 #!/usr/bin/env magix
 #!magix bash
-#!runtimeInputs jq
+#!packages jq
 
 jq --help
 #+end_src
