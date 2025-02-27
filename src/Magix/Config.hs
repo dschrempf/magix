@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 -- |
 -- Module      :  Magix.Config
 -- Description :  Magix configuration
@@ -29,9 +31,8 @@ import Prelude hiding (readFile)
 data Config = Config
   { scriptPath :: !FilePath,
     scriptName :: !String,
-    -- | The Magix hash includes the hash of the script directory and the path
-    -- of the Nixpkgs directory.
     nixpkgsPath :: !FilePath,
+    -- | See `getMagixHash`.
     magixHash :: !ByteString,
     -- | Cache directory containing Nix expressions and build results.
     cacheDir :: !FilePath,
@@ -58,25 +59,17 @@ getDefaultNixpkgsPathOrFail = do
     Right np -> pure np
 
 getConfig :: Options -> ByteString -> IO Config
-getConfig o x = do
-  p' <- canonicalizePath p
-  c <- maybe (getUserCacheDir "magix") canonicalizePath o.cachePath
-  np <- maybe getDefaultNixpkgsPathOrFail canonicalizePath o.nixpkgsPath
-  let nm = takeBaseName p
-      ha = getMagixHash np x
-      bd = getBuildDir c ha nm
-  pure $
-    Config
-      { scriptPath = p',
-        scriptName = nm,
-        magixHash = ha,
-        nixpkgsPath = np,
-        cacheDir = c,
-        lockPath = getLockPath c ha nm,
-        scriptLinkPath = getScriptLinkPath c ha nm,
-        buildDir = bd,
-        buildExprPath = getBuildExprPath bd,
-        resultLinkPath = getResultLinkPath c ha nm
-      }
+getConfig opts scriptContents = do
+  scriptPath <- canonicalizePath p
+  cacheDir <- maybe (getUserCacheDir "magix") canonicalizePath opts.cachePath
+  nixpkgsPath <- maybe getDefaultNixpkgsPathOrFail canonicalizePath opts.nixpkgsPath
+  let scriptName = takeBaseName p
+      magixHash = getMagixHash nixpkgsPath scriptContents
+      lockPath = getLockPath cacheDir magixHash scriptName
+      scriptLinkPath = getScriptLinkPath cacheDir magixHash scriptName
+      buildDir = getBuildDir cacheDir magixHash scriptName
+      buildExprPath = getBuildExprPath buildDir
+      resultLinkPath = getResultLinkPath cacheDir magixHash scriptName
+  pure $ Config {..}
   where
-    p = o.scriptPath
+    p = opts.scriptPath
