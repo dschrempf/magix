@@ -12,7 +12,6 @@
 module Magix.Build
   ( BuildStatus (..),
     getBuildStatus,
-    removeBuild,
     build,
     withBuildLock,
   )
