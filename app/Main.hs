@@ -56,7 +56,7 @@ withFormatter handler = setFormatter handler formatter
   where
     -- Sadly, coloring log messages is a pain.
     formatter handler' (prio, msg) =
-      tfLogFormatter "%F %X %Z" format handler' (prio, msg)
+      tfLogFormatter "%F %X.%6q %Z" format handler' (prio, msg)
       where
         color = case prio of
           DEBUG -> White
@@ -106,7 +106,6 @@ main = do
   let logD = logL logger DEBUG
       logI = logL logger INFO
       logE = logL logger ERROR
-
   logD $ "Options are: " <> show opts
 
   let p = scriptPath opts
