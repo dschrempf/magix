@@ -24,8 +24,16 @@ import Magix.Directives (Directives, getDirectives)
 import Magix.Expression (getNixExpression)
 import Magix.Options (Options (..), Rebuild (..), Verbosity (..), getOptions)
 import Magix.Run (run)
+import System.Console.ANSI
+  ( Color (Green, Red, White),
+    ColorIntensity (Dull),
+    ConsoleIntensity (BoldIntensity),
+    ConsoleLayer (Foreground),
+    SGR (Reset, SetColor, SetConsoleIntensity),
+    setSGRCode,
+  )
 import System.IO (Handle, stderr)
-import System.Log.Formatter (simpleLogFormatter)
+import System.Log.Formatter (tfLogFormatter)
 import System.Log.Handler (setFormatter)
 import System.Log.Handler.Simple (GenericHandler, streamHandler)
 import System.Log.Logger
@@ -45,7 +53,25 @@ import Prelude hiding (readFile)
 withFormatter :: GenericHandler Handle -> GenericHandler Handle
 withFormatter handler = setFormatter handler formatter
   where
-    formatter = simpleLogFormatter "[$time $loggername $prio] $msg"
+    -- Sadly, coloring log messages is a pain.
+    formatter handler' (prio, msg) =
+      tfLogFormatter "%F %X %Z" format handler' (prio, msg)
+      where
+        color = case prio of
+          DEBUG -> White
+          INFO -> Green
+          WARNING -> Red
+          ERROR -> Red
+          _unused -> White
+        align = case prio of
+          DEBUG -> "  "
+          INFO -> "   "
+          WARNING -> ""
+          ERROR -> "  "
+          _unused -> ""
+        setC = setSGRCode [SetColor Foreground Dull color, SetConsoleIntensity BoldIntensity]
+        rstC = setSGRCode [Reset]
+        format = setC <> "[$time $loggername $prio]" <> rstC <> align <> " $msg"
 
 mainLogger :: String
 mainLogger = "Magix.Main"

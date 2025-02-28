@@ -99,7 +99,8 @@ executable magix
   autogen-modules:
   ghc-options:
   build-depends:
-    , base        >=4.7 && <5
+    , ansi-terminal
+    , base           >=4.7 && <5
     , bytestring
     , hslogger
     , magix
