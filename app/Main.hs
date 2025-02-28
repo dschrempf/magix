@@ -47,6 +47,9 @@ withFormatter handler = setFormatter handler formatter
   where
     formatter = simpleLogFormatter "[$time $loggername $prio] $msg"
 
+mainLogger :: String
+mainLogger = "Magix.Main"
+
 setupLogger :: Verbosity -> IO Logger
 setupLogger v = do
   let prio = case v of
@@ -54,13 +57,13 @@ setupLogger v = do
         Debug -> DEBUG
   updateGlobalLogger rootLoggerName removeHandler
   stderrHandler <- withFormatter <$> streamHandler stderr prio
-  logger <- setHandlers [stderrHandler] . setLevel prio <$> getLogger "Magix.Main"
+  logger <- setHandlers [stderrHandler] . setLevel prio <$> getLogger mainLogger
   saveGlobalLogger logger
   pure logger
 
 newBuild :: Config -> Directives -> IO ()
 newBuild conf dirs = do
-  logger <- getLogger "Magix.Main"
+  logger <- getLogger mainLogger
   let logD = logL logger DEBUG
       logI = logL logger INFO
   logD "Getting Nix expression"
