@@ -23,11 +23,10 @@ module Magix
     BuildStatus (..),
     getBuildStatus,
     build,
-    removeBuild,
   )
 where
 
-import Magix.Build (BuildStatus (..), build, getBuildStatus, removeBuild)
+import Magix.Build (BuildStatus (..), build, getBuildStatus)
 import Magix.Config (getConfig)
 import Magix.Directives (getDirectives)
 import Magix.Expression (getNixExpression)
