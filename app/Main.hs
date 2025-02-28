@@ -118,12 +118,16 @@ main = do
   conf <- getConfig opts bs
   logD $ "Magix configuration is " <> show conf
 
+  logD "Decoding script file"
+  txt <- case decodeUtf8' bs of
+    Left e -> logE "Failed decoding script file" >> throwIO e
+    Right t -> logD "Successfully decoded script file" >> pure t
   logD "Parsing directives"
-  txt <- either throwIO pure $ decodeUtf8' bs
   dirs <- case getDirectives p txt of
     Left e -> logE "Failed parsing directives" >> throwIO e
-    Right ds -> pure ds
-  logD $ "Directives are " <> show dirs
+    Right ds -> do
+      logD $ "Successfully parsed directives: " <> show ds
+      pure ds
 
   case forceBuild opts of
     ForceBuild -> do
@@ -136,10 +140,8 @@ main = do
         buildStatus <- getBuildStatus conf
         case buildStatus of
           HasBeenBuilt -> logI "Script has already been built"
-          NeedToBuild -> do
-            logI "Need to build"
-            newBuild conf dirs
+          NeedToBuild -> logI "Need to build" >> newBuild conf dirs
 
-  logD "Running"
+  logI "Running script"
   run opts conf
   logD "Done"
