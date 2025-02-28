@@ -14,7 +14,7 @@ module Main
   )
 where
 
-import Control.Exception (throwIO)
+import Control.Exception (onException, throwIO)
 import Data.ByteString (readFile)
 import Data.Text (unpack)
 import Data.Text.Encoding (decodeUtf8')
@@ -32,6 +32,7 @@ import System.Console.ANSI
     SGR (Reset, SetColor, SetConsoleIntensity),
     setSGRCode,
   )
+import System.Exit (exitFailure)
 import System.IO (Handle, stderr)
 import System.Log.Formatter (tfLogFormatter)
 import System.Log.Handler (setFormatter)
@@ -91,26 +92,29 @@ newBuild :: Config -> Directives -> IO ()
 newBuild conf dirs = do
   logger <- getLogger mainLogger
   let logD = logL logger DEBUG
-      logI = logL logger INFO
-  logD "Getting Nix expression"
+  logD "Getting Magix Nix expression"
   expr <- getNixExpression conf dirs
-  logD $ "Nix expression is " <> unpack expr
-  logI "Building Nix expression"
-  build conf expr
-  logD "Built Nix expression"
+  logD $ "Magix Nix expression:\n" <> unpack expr
+  logD "Building Magix Nix expression"
+  build logger conf expr
+  logD "Built Magix Nix expression"
 
 main :: IO ()
 main = do
   opts <- getOptions
   logger <- setupLogger (verbosity opts)
   let logD = logL logger DEBUG
+      logI = logL logger INFO
       logE = logL logger ERROR
 
-  logD $ "Options are " <> show opts
+  logD $ "Options are: " <> show opts
 
   let p = scriptPath opts
-  logD $ "Reading script at path " <> p
-  bs <- readFile opts.scriptPath
+  logD $ "Reading script at path: " <> p
+  bs <-
+    readFile p `onException` do
+      logE $ "Could not read file: " <> p
+      exitFailure
 
   conf <- getConfig opts bs
   logD $ "Magix configuration is " <> show conf
@@ -124,17 +128,17 @@ main = do
 
   case forceBuild opts of
     ForceBuild -> do
-      logD "Force build"
-      withBuildLock conf $ newBuild conf dirs
+      logI "Forcing build"
+      withBuildLock logger conf $ newBuild conf dirs
     ReuseBuildIfAvailable -> do
-      logD "Reuse build if available"
+      logD "Reusing build if available"
       logD "Checking build status"
-      withBuildLock conf $ do
+      withBuildLock logger conf $ do
         buildStatus <- getBuildStatus conf
         case buildStatus of
-          HasBeenBuilt -> logD "Script has already been built"
+          HasBeenBuilt -> logI "Script has already been built"
           NeedToBuild -> do
-            logD "Need to build"
+            logI "Need to build"
             newBuild conf dirs
 
   logD "Running"

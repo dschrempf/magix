@@ -84,6 +84,7 @@ library
     , directory
     , filelock
     , filepath
+    , hslogger
     , megaparsec
     , optparse-applicative
     , process

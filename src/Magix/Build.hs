@@ -17,7 +17,7 @@ module Magix.Build
   )
 where
 
-import Control.Monad (when)
+import Control.Monad (unless, when)
 import Data.Text (Text)
 import Data.Text.IO (writeFile)
 import Magix.Config (Config (..))
@@ -28,9 +28,11 @@ import System.Directory
     removeDirectoryRecursive,
     removeFile,
   )
+import System.Exit (ExitCode (..), exitFailure)
 import System.FileLock (SharedExclusive (..), withFileLock)
+import System.Log.Logger (Logger, Priority (..), logL)
 import System.Posix (createSymbolicLink)
-import System.Process (callProcess)
+import System.Process (readProcessWithExitCode)
 import Prelude hiding (writeFile)
 
 data BuildStatus = HasBeenBuilt | NeedToBuild deriving (Eq, Show)
@@ -40,34 +42,59 @@ getBuildStatus c = do
   resultDirExists <- doesDirectoryExist c.resultLinkPath
   pure $ if resultDirExists then HasBeenBuilt else NeedToBuild
 
-removeBuild :: Config -> IO ()
-removeBuild c = do
+removeBuild :: Logger -> Config -> IO ()
+removeBuild logger cfg = do
+  let logD = logL logger DEBUG
   -- Link to script.
-  scriptLinkPathExists <- doesFileExist c.scriptLinkPath
-  when scriptLinkPathExists $ removeFile c.scriptLinkPath
+  scriptLinkPathExists <- doesFileExist cfg.scriptLinkPath
+  when scriptLinkPathExists $ do
+    logD $ "Removing link to script: " <> cfg.scriptLinkPath
+    removeFile cfg.scriptLinkPath
   -- Build directory.
-  buildDirExists <- doesDirectoryExist c.buildDir
-  when buildDirExists $ removeDirectoryRecursive c.buildDir
+  buildDirExists <- doesDirectoryExist cfg.buildDir
+  when buildDirExists $ do
+    logD $ "Removing build directory: " <> cfg.buildDir
+    removeDirectoryRecursive cfg.buildDir
   -- Result directory.
-  resultDirExists <- doesDirectoryExist c.resultLinkPath
-  when resultDirExists $ removeFile c.resultLinkPath
+  resultDirExists <- doesDirectoryExist cfg.resultLinkPath
+  when resultDirExists $ do
+    logD $ "Removing link to build result: " <> cfg.resultLinkPath
+    removeFile cfg.resultLinkPath
 
-build :: Config -> Text -> IO ()
-build c e = do
-  -- Remove any previous builds.
-  removeBuild c
-  -- Create sanitized link to script.
-  createSymbolicLink c.scriptPath c.scriptLinkPath
-  -- Recreate the build directory.
-  createDirectoryIfMissing True c.buildDir
+build :: Logger -> Config -> Text -> IO ()
+build logger cfg expr = do
+  let logD = logL logger DEBUG
+      logE = logL logger ERROR
+  logD "Removing previous builds"
+  removeBuild logger cfg
+  logD $ "Creating sanitized link to script: " <> cfg.scriptLinkPath
+  createSymbolicLink cfg.scriptPath cfg.scriptLinkPath
+  logD $ "Recreating the build directory: " <> cfg.buildDir
+  createDirectoryIfMissing True cfg.buildDir
   -- Expression.
-  let exprPath = buildExprPath c
-  writeFile exprPath e
+  let exprPath = buildExprPath cfg
+  logD $ "Writing Magix Nix expression: " <> exprPath
+  writeFile exprPath expr
   -- Build.
-  callProcess "nix-build" ["--out-link", c.resultLinkPath, c.buildDir]
+  logD "Building with nix-build"
+  (exitCode, stdOut, stdErr) <-
+    readProcessWithExitCode
+      "nix-build"
+      ["--out-link", cfg.resultLinkPath, cfg.buildDir]
+      ""
+  unless (null stdOut) $ logD $ "Build output ('stdout'):\n" <> stdOut
+  -- I prefer to log this with level "WARNING", but `nix-build` does use
+  -- `stderr` quite extensively.
+  unless (null stdErr) $ logD $ "Build output ('stderr'):\n" <> stdErr
+  unless (exitCode == ExitSuccess) $ do
+    logE $ "Build failed with code: " <> show exitCode
+    exitFailure
 
-withBuildLock :: Config -> IO () -> IO ()
-withBuildLock c f = do
+withBuildLock :: Logger -> Config -> IO () -> IO ()
+withBuildLock logger cfg action = do
   -- Make sure the cache directory exists.
-  createDirectoryIfMissing True c.cacheDir
-  withFileLock c.lockPath Exclusive $ const f
+  createDirectoryIfMissing True cfg.cacheDir
+  let logD = logL logger DEBUG
+  logD "Acquiring lock"
+  withFileLock cfg.lockPath Exclusive $ const action
+  logD "Released lock"
