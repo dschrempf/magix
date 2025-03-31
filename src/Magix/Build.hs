@@ -82,10 +82,12 @@ build logger cfg expr = do
       "nix-build"
       ["--out-link", cfg.resultLinkPath, cfg.buildDir]
       ""
-  unless (null stdOut) $ logD $ "Build output ('stdout'):\n" <> stdOut
-  -- I prefer to log this with level "WARNING", but `nix-build` does use
-  -- `stderr` quite extensively.
-  unless (null stdErr) $ logD $ "Build output ('stderr'):\n" <> stdErr
+  let success = exitCode == ExitSuccess
+      logFun = if success then logD else logE
+  unless (null stdOut) $ logFun $ "Build output ('stdout'):\n" <> stdOut
+  -- I would prefer to always log this with level "WARNING", but `nix-build`
+  -- does use `stderr` quite extensively.
+  unless (null stdErr) $ logFun $ "Build output ('stderr'):\n" <> stdErr
   unless (exitCode == ExitSuccess) $ do
     logE $ "Build failed with code: " <> show exitCode
     exitFailure
