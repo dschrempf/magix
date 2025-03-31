@@ -5,7 +5,7 @@
 pkgs.stdenv.mkDerivation {
   name = "__SCRIPT_NAME__";
 
-  src = __SCRIPT_SOURCE__;
+  src = builtins.path { path = __SCRIPT_SOURCE__; };
   dontUnpack = true;
 
   nativeBuildInputs = with pkgs; [ makeWrapper ];
