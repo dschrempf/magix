@@ -70,6 +70,11 @@ emptySpaceTest =
       "#!magix \t bash \t"
     ]
 
+directiveNotNewlineTest :: Text
+directiveNotNewlineTest =
+  unlines
+    ["#!/usr/bin/env \t magix\t #!magix \t bash \t"]
+
 spec :: Spec
 spec = do
   describe "pShebang" $ do
@@ -98,3 +103,6 @@ spec = do
       parse' pDirectives newlineTest `shouldBe` Bash (BashDirectives ["a"])
       parse' pDirectives newlineEmptyTest `shouldBe` Bash (BashDirectives [])
       parse' pDirectives emptySpaceTest `shouldBe` Bash (BashDirectives [])
+
+    it "fails on some edge cases" $
+      parse pDirectives "" directiveNotNewlineTest `shouldSatisfy` isLeft

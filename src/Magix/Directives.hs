@@ -26,7 +26,7 @@ import Magix.Languages.Bash.Directives (BashDirectives, pBashDirectives)
 import Magix.Languages.Haskell.Directives (HaskellDirectives, pHaskellDirectives)
 import Magix.Languages.Python.Directives (PythonDirectives, pPythonDirectives)
 import Text.Megaparsec (MonadParsec (..), choice, chunk, errorBundlePretty, parse)
-import Text.Megaparsec.Char (space1)
+import Text.Megaparsec.Char (hspace, newline, space)
 import Prelude hiding (readFile)
 
 data Directives
@@ -53,7 +53,7 @@ pLanguageSpecificDirectives =
     ]
 
 pDirectives :: Parser Directives
-pDirectives = pShebang *> space1 *> pLanguageSpecificDirectives
+pDirectives = pShebang *> hspace *> newline *> space *> pLanguageSpecificDirectives
 
 data DirectivesParseError = DirectivesParseError
   { _directives :: !Text,

@@ -14,8 +14,13 @@ module Magix.Directives.CommonSpec
   )
 where
 
-import Data.Either (isLeft)
-import Magix.Directives.Common (pDirectiveWithValue, pDirectiveWithValues, pMagixDirective)
+import Data.Either (isLeft, isRight)
+import Magix.Directives.Common
+  ( pDirectiveWithValue,
+    pDirectiveWithValues,
+    pLanguageDirectives,
+    pMagixDirective,
+  )
 import Test.Hspec (Spec, describe, it, shouldBe, shouldSatisfy)
 import Text.Megaparsec (chunk, parse)
 import Prelude hiding (readFile)
@@ -48,3 +53,9 @@ spec = do
       parse (pMagixDirective "haskell") "" "#!magic haskell" `shouldSatisfy` isLeft
       parse (pMagixDirective "bash") "" "#!magix haskell" `shouldSatisfy` isLeft
       parse (pMagixDirective "foo") "" "#!magic" `shouldSatisfy` isLeft
+
+  describe "pLanguageDirectives" $ do
+    it "parses sample directive" $ do
+      let p = pLanguageDirectives "foo" (pDirectiveWithValue "bar" (chunk "baz")) mconcat
+      parse p "" "#!magix foo #!bar baz" `shouldSatisfy` isLeft
+      parse p "" "#!magix foo\n#!bar baz" `shouldSatisfy` isRight
