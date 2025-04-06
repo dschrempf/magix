@@ -46,16 +46,19 @@ spec = do
 
   describe "pMagixDirective" $ do
     it "parses sample Magix directives" $ do
-      parse (pMagixDirective "haskell") "" "#!magix haskell" `shouldBe` Right ()
-      parse (pMagixDirective "bash") "" "#!magix bash" `shouldBe` Right ()
+      parse pMagixDirective "" "#!magix haskell" `shouldBe` Right "haskell"
+      parse pMagixDirective "" "#!magix foo" `shouldBe` Right "foo"
 
     it "fails on wrong Magix directives" $ do
-      parse (pMagixDirective "haskell") "" "#!magic haskell" `shouldSatisfy` isLeft
-      parse (pMagixDirective "bash") "" "#!magix haskell" `shouldSatisfy` isLeft
-      parse (pMagixDirective "foo") "" "#!magic" `shouldSatisfy` isLeft
+      parse pMagixDirective "" "#!magic haskell" `shouldSatisfy` isLeft
+      parse pMagixDirective "" "#!magic" `shouldSatisfy` isLeft
 
   describe "pLanguageDirectives" $ do
     it "parses sample directive" $ do
-      let p = pLanguageDirectives "foo" (pDirectiveWithValue "bar" (chunk "baz")) mconcat
-      parse p "" "#!magix foo #!bar baz" `shouldSatisfy` isLeft
-      parse p "" "#!magix foo\n#!bar baz" `shouldSatisfy` isRight
+      let p = pLanguageDirectives (pDirectiveWithValue "foo" (chunk "bar"))
+      parse p "" "#!foo bar" `shouldSatisfy` isRight
+      parse p "" "\n\n#!foo bar" `shouldSatisfy` isRight
+
+-- TODO.
+-- parse p "" "#!magix bash #!foo bar" `shouldSatisfy` isLeft
+-- parse p "" "#!magix bash\n#!foo bar" `shouldSatisfy` isRight

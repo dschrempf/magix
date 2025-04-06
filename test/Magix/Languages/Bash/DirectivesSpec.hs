@@ -21,20 +21,17 @@ import Test.Hspec (Spec, describe, it, shouldBe)
 import Prelude hiding (unlines)
 
 empty :: Text
-empty = "#!magix bash"
+empty = " \t\n"
 
 minimal :: Text
 minimal =
   unlines
-    [ "#!magix bash",
-      "#!packages jq"
-    ]
+    ["#!packages jq"]
 
 multiple :: Text
 multiple =
   unlines
-    [ "#!magix bash",
-      "#!packages a",
+    [ "#!packages a",
       "#!packages b c",
       "#!packages d e f"
     ]

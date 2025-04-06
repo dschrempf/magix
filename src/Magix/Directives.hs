@@ -18,14 +18,15 @@ module Magix.Directives
   )
 where
 
+import Control.Applicative (Alternative (..))
 import Control.Exception (Exception)
 import Data.Bifunctor (Bifunctor (..))
-import Data.Text (Text)
-import Magix.Directives.Common (Parser, pDirectiveWithValue)
+import Data.Text (Text, unpack)
+import Magix.Directives.Common (Parser, pDirectiveWithValue, pMagixDirective)
 import Magix.Languages.Bash.Directives (BashDirectives, pBashDirectives)
 import Magix.Languages.Haskell.Directives (HaskellDirectives, pHaskellDirectives)
 import Magix.Languages.Python.Directives (PythonDirectives, pPythonDirectives)
-import Text.Megaparsec (MonadParsec (..), choice, chunk, errorBundlePretty, parse)
+import Text.Megaparsec (MonadParsec (notFollowedBy, try), chunk, errorBundlePretty, parse)
 import Text.Megaparsec.Char (hspace, newline, space)
 import Prelude hiding (readFile)
 
@@ -45,12 +46,16 @@ pShebang :: Parser Text
 pShebang = pDirectiveWithValue "/usr/bin/env" (chunk "magix")
 
 pLanguageSpecificDirectives :: Parser Directives
-pLanguageSpecificDirectives =
-  choice
-    [ Bash <$> try pBashDirectives,
-      Haskell <$> try pHaskellDirectives,
-      Python <$> pPythonDirectives
-    ]
+pLanguageSpecificDirectives = do
+  language <- pMagixDirective
+  let newlineWith parser = try (newline *> parser) <|> mempty
+  directives <- case language of
+    "bash" -> Bash <$> newlineWith pBashDirectives
+    "haskell" -> Haskell <$> newlineWith pHaskellDirectives
+    "python" -> Python <$> newlineWith pPythonDirectives
+    unknownLanguage -> fail $ "unknown language: " <> unpack unknownLanguage
+  notFollowedBy $ space *> chunk "#!"
+  pure directives
 
 pDirectives :: Parser Directives
 pDirectives = pShebang *> hspace *> newline *> space *> pLanguageSpecificDirectives

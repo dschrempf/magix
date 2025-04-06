@@ -26,4 +26,4 @@ pPythonPackages :: Parser PythonDirectives
 pPythonPackages = PythonDirectives <$> pDirectiveWithValues "pythonPackages"
 
 pPythonDirectives :: Parser PythonDirectives
-pPythonDirectives = pLanguageDirectives "python" pPythonPackages mconcat
+pPythonDirectives = pLanguageDirectives pPythonPackages

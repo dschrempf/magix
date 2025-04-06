@@ -21,21 +21,19 @@ import Test.Hspec (Spec, describe, it, shouldBe)
 import Prelude hiding (unlines)
 
 empty :: Text
-empty = "#!magix haskell"
+empty = " \t\n"
 
 minimal :: Text
 minimal =
   unlines
-    [ "#!magix haskell",
-      "#!haskellPackages bytestring",
+    [ "#!haskellPackages bytestring",
       "#!ghcFlags -threaded"
     ]
 
 multiple :: Text
 multiple =
   unlines
-    [ "#!magix haskell",
-      "#!haskellPackages a",
+    [ "#!haskellPackages a",
       "#!haskellPackages b c",
       "#!ghcFlags 1",
       "#!haskellPackages d e f",

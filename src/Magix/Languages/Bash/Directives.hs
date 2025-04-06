@@ -26,4 +26,4 @@ pPackages :: Parser BashDirectives
 pPackages = BashDirectives <$> pDirectiveWithValues "packages"
 
 pBashDirectives :: Parser BashDirectives
-pBashDirectives = pLanguageDirectives "bash" pPackages mconcat
+pBashDirectives = pLanguageDirectives pPackages
