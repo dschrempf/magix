@@ -13,6 +13,8 @@ module Magix.Directives
   ( Directives (..),
     getLanguageName,
     pShebang,
+    pMagixDirective,
+    pLanguageDirectives,
     pDirectives,
     getDirectives,
   )
@@ -21,13 +23,13 @@ where
 import Control.Applicative (Alternative (..))
 import Control.Exception (Exception)
 import Data.Bifunctor (Bifunctor (..))
-import Data.Text (Text, unpack)
-import Magix.Directives.Common (Parser, pDirectiveWithValue, pMagixDirective)
+import Data.Text (Text, pack, unpack)
 import Magix.Languages.Bash.Directives (BashDirectives, pBashDirectives)
+import Magix.Languages.Common.Directives (Parser, pDirectiveWithValue)
 import Magix.Languages.Haskell.Directives (HaskellDirectives, pHaskellDirectives)
 import Magix.Languages.Python.Directives (PythonDirectives, pPythonDirectives)
 import Text.Megaparsec (MonadParsec (notFollowedBy, try), chunk, errorBundlePretty, parse)
-import Text.Megaparsec.Char (hspace, newline, space)
+import Text.Megaparsec.Char (alphaNumChar, hspace, newline, space)
 import Prelude hiding (readFile)
 
 data Directives
@@ -45,20 +47,26 @@ getLanguageName (Python _) = "Python"
 pShebang :: Parser Text
 pShebang = pDirectiveWithValue "/usr/bin/env" (chunk "magix")
 
-pLanguageSpecificDirectives :: Parser Directives
-pLanguageSpecificDirectives = do
+pLanguage :: Parser Text
+pLanguage = pack <$> some alphaNumChar
+
+pMagixDirective :: Parser Text
+pMagixDirective = pDirectiveWithValue "magix" pLanguage <* hspace
+
+pLanguageDirectives :: Parser Directives
+pLanguageDirectives = do
   language <- pMagixDirective
-  let newlineWith parser = try (newline *> parser) <|> mempty
+  let withNewline p = try (newline *> p) <|> mempty
   directives <- case language of
-    "bash" -> Bash <$> newlineWith pBashDirectives
-    "haskell" -> Haskell <$> newlineWith pHaskellDirectives
-    "python" -> Python <$> newlineWith pPythonDirectives
+    "bash" -> Bash <$> withNewline pBashDirectives
+    "haskell" -> Haskell <$> withNewline pHaskellDirectives
+    "python" -> Python <$> withNewline pPythonDirectives
     unknownLanguage -> fail $ "unknown language: " <> unpack unknownLanguage
   notFollowedBy $ space *> chunk "#!"
   pure directives
 
 pDirectives :: Parser Directives
-pDirectives = pShebang *> hspace *> newline *> space *> pLanguageSpecificDirectives
+pDirectives = pShebang *> hspace *> newline *> pLanguageDirectives
 
 data DirectivesParseError = DirectivesParseError
   { _directives :: !Text,

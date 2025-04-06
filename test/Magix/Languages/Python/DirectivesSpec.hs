@@ -24,10 +24,7 @@ empty :: Text
 empty = " \t\n"
 
 minimal :: Text
-minimal =
-  unlines
-    [ "#!pythonPackages numpy"
-    ]
+minimal = "#!pythonPackages numpy"
 
 multiple :: Text
 multiple =

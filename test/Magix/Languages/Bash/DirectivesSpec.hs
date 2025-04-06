@@ -24,9 +24,7 @@ empty :: Text
 empty = " \t\n"
 
 minimal :: Text
-minimal =
-  unlines
-    ["#!packages jq"]
+minimal = "#!packages jq"
 
 multiple :: Text
 multiple =

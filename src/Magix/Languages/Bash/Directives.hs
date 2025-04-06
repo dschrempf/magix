@@ -16,14 +16,15 @@ module Magix.Languages.Bash.Directives
 where
 
 import Data.Text (Text)
-import Magix.Directives.Common (Parser, pDirectiveWithValues, pLanguageDirectives)
+import Magix.Languages.Common.Directives
+  ( Parser,
+    pDirectiveWithValues,
+    pManyDirectives,
+  )
 import Prelude hiding (readFile)
 
 newtype BashDirectives = BashDirectives {_packages :: [Text]}
   deriving (Eq, Show, Semigroup, Monoid)
 
-pPackages :: Parser BashDirectives
-pPackages = BashDirectives <$> pDirectiveWithValues "packages"
-
 pBashDirectives :: Parser BashDirectives
-pBashDirectives = pLanguageDirectives pPackages
+pBashDirectives = pManyDirectives $ BashDirectives <$> pDirectiveWithValues "packages"

@@ -1,5 +1,5 @@
 -- |
--- Module      :  Magix.Directives.Common
+-- Module      :  Magix.Languages.Common.Directives
 -- Description :  Common tools for parsing directives
 -- Copyright   :  2024 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
@@ -9,12 +9,11 @@
 -- Portability :  portable
 --
 -- Creation date: Fri Oct 18 09:17:40 2024.
-module Magix.Directives.Common
+module Magix.Languages.Common.Directives
   ( Parser,
     pDirectiveWithValue,
     pDirectiveWithValues,
-    pMagixDirective,
-    pLanguageDirectives,
+    pManyDirectives,
   )
 where
 
@@ -40,9 +39,6 @@ type Parser = Parsec Void Text
 pDirective :: Text -> Parser Text
 pDirective d = chunk "#!" *> chunk d
 
-pLanguage :: Parser Text
-pLanguage = pack <$> some alphaNumChar
-
 pValue :: Parser Text
 pValue = pack <$> some (alphaNumChar <|> punctuationChar <|> symbolChar)
 
@@ -52,10 +48,5 @@ pDirectiveWithValue d p = pDirective d *> hspace *> p
 pDirectiveWithValues :: Text -> Parser [Text]
 pDirectiveWithValues d = pDirectiveWithValue d (sepEndBy1 pValue hspace)
 
-pMagixDirective :: Parser Text
-pMagixDirective = pDirectiveWithValue "magix" pLanguage <* hspace
-
-pLanguageDirectives :: (Monoid b) => Parser b -> Parser b
-pLanguageDirectives pLanguageDirective =
-  mconcat
-    <$> sepEndBy pLanguageDirective (hspace <* newline)
+pManyDirectives :: (Monoid b) => Parser b -> Parser b
+pManyDirectives p = mconcat <$> sepEndBy p (hspace <* newline)

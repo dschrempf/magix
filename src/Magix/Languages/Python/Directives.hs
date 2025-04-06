@@ -16,14 +16,17 @@ module Magix.Languages.Python.Directives
 where
 
 import Data.Text (Text)
-import Magix.Directives.Common (Parser, pDirectiveWithValues, pLanguageDirectives)
+import Magix.Languages.Common.Directives
+  ( Parser,
+    pDirectiveWithValues,
+    pManyDirectives,
+  )
 import Prelude hiding (readFile)
 
 newtype PythonDirectives = PythonDirectives {_pythonPackages :: [Text]}
   deriving (Eq, Show, Semigroup, Monoid)
 
-pPythonPackages :: Parser PythonDirectives
-pPythonPackages = PythonDirectives <$> pDirectiveWithValues "pythonPackages"
-
 pPythonDirectives :: Parser PythonDirectives
-pPythonDirectives = pLanguageDirectives pPythonPackages
+pPythonDirectives =
+  pManyDirectives $
+    PythonDirectives <$> pDirectiveWithValues "pythonPackages"

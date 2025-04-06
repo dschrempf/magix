@@ -59,11 +59,11 @@ library
     Magix.Build
     Magix.Config
     Magix.Directives
-    Magix.Directives.Common
     Magix.Expression
     Magix.Hash
     Magix.Languages.Bash.Directives
     Magix.Languages.Bash.Expression
+    Magix.Languages.Common.Directives
     Magix.Languages.Haskell.Directives
     Magix.Languages.Haskell.Expression
     Magix.Languages.Python.Directives
@@ -113,10 +113,10 @@ test-suite test-magix
   hs-source-dirs:     test
   other-modules:
     Magix.BuildSpec
-    Magix.Directives.CommonSpec
     Magix.DirectivesSpec
     Magix.Languages.Bash.DirectivesSpec
     Magix.Languages.Bash.ExpressionSpec
+    Magix.Languages.Common.DirectivesSpec
     Magix.Languages.Haskell.DirectivesSpec
     Magix.Languages.Haskell.ExpressionSpec
     Magix.Languages.Python.DirectivesSpec

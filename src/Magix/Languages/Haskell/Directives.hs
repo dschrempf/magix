@@ -17,7 +17,11 @@ where
 
 import Control.Applicative (Alternative (..))
 import Data.Text (Text)
-import Magix.Directives.Common (Parser, pDirectiveWithValues, pLanguageDirectives)
+import Magix.Languages.Common.Directives
+  ( Parser,
+    pDirectiveWithValues,
+    pManyDirectives,
+  )
 import Text.Megaparsec (try)
 import Prelude hiding (readFile)
 
@@ -46,8 +50,5 @@ pGhcFlags = do
   flags <- pDirectiveWithValues "ghcFlags"
   pure $ HaskellDirectives [] flags
 
-pHaskellDirective :: Parser HaskellDirectives
-pHaskellDirective = try pHaskellPackages <|> pGhcFlags
-
 pHaskellDirectives :: Parser HaskellDirectives
-pHaskellDirectives = pLanguageDirectives pHaskellDirective
+pHaskellDirectives = pManyDirectives $ try pHaskellPackages <|> pGhcFlags
