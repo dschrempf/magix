@@ -1,7 +1,7 @@
 #!/usr/bin/env magix
 #!magix haskell
-#!haskellPackages bytestring
 #!ghcFlags -threaded
+#!haskellPackages bytestring
 
 {-# LANGUAGE OverloadedStrings #-}
 

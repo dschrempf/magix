@@ -27,8 +27,8 @@ jq --help
 #+begin_src haskell :session ghci :exports code :results none
 #!/usr/bin/env magix
 #!magix haskell
-#!haskellPackages bytestring
 #!ghcFlags -threaded
+#!haskellPackages bytestring
 
 {-# LANGUAGE OverloadedStrings #-}
 
