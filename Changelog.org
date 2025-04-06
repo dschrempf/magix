@@ -1,4 +1,6 @@
 * Unreleased 0.4.0.0
+
+* Version 0.4.0.0
 - Refactor large parts of "Directive" modules and test suite
 - Improve logging framework
 
