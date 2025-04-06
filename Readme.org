@@ -60,12 +60,12 @@ Try Magix without installation on a Bash script called [[file:test-scripts/bash/
 #+name: Try
 #+begin_src sh :exports both :results verbatim
   wget https://github.com/dschrempf/magix/raw/refs/heads/main/test-scripts/bash/args
-  nix run github:dschrempf/magix#magix -- args one two tree -h
+  nix run github:dschrempf/magix#magix -- args one two three -h
 #+end_src
 
 #+RESULTS: Try
 : Command basename is: args
-: Command line arguments are: one two tree -h
+: Command line arguments are: one two three -h
 
 * Get help
 #+name: Help
