@@ -1,5 +1,5 @@
 -- |
--- Module      :  Magix.Directives.Common
+-- Module      :  Magix.Languages.Common.Directives
 -- Description :  Common tools for parsing directives
 -- Copyright   :  2024 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
@@ -9,22 +9,19 @@
 -- Portability :  portable
 --
 -- Creation date: Fri Oct 18 09:17:40 2024.
-module Magix.Directives.Common
+module Magix.Languages.Common.Directives
   ( Parser,
     pDirectiveWithValue,
     pDirectiveWithValues,
-    pMagixDirective,
-    pLanguageDirectives,
+    pManyDirectives,
   )
 where
 
-import Control.Applicative (Alternative (..), optional)
-import Data.Functor (($>))
+import Control.Applicative (Alternative (..))
 import Data.Text (Text, pack)
 import Data.Void (Void)
 import Text.Megaparsec
-  ( MonadParsec (notFollowedBy),
-    Parsec,
+  ( Parsec,
     chunk,
     sepEndBy,
     sepEndBy1,
@@ -51,12 +48,5 @@ pDirectiveWithValue d p = pDirective d *> hspace *> p
 pDirectiveWithValues :: Text -> Parser [Text]
 pDirectiveWithValues d = pDirectiveWithValue d (sepEndBy1 pValue hspace)
 
-pMagixDirective :: Text -> Parser ()
-pMagixDirective x = pDirectiveWithValue "magix" (chunk x) $> ()
-
-pLanguageDirectives :: Text -> Parser b -> ([b] -> a) -> Parser a
-pLanguageDirectives language pLanguageDirective combineDirectives = do
-  pMagixDirective language <* hspace <* optional newline
-  ds <- sepEndBy pLanguageDirective (hspace <* newline)
-  notFollowedBy $ chunk "#!"
-  pure $ combineDirectives ds
+pManyDirectives :: (Monoid b) => Parser b -> Parser b
+pManyDirectives p = mconcat <$> sepEndBy p (hspace <* newline)

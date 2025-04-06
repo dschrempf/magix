@@ -21,20 +21,15 @@ import Test.Hspec (Spec, describe, it, shouldBe)
 import Prelude hiding (unlines)
 
 empty :: Text
-empty = "#!magix python"
+empty = " \t\n"
 
 minimal :: Text
-minimal =
-  unlines
-    [ "#!magix python",
-      "#!pythonPackages numpy"
-    ]
+minimal = "#!pythonPackages numpy"
 
 multiple :: Text
 multiple =
   unlines
-    [ "#!magix python",
-      "#!pythonPackages a",
+    [ "#!pythonPackages a",
       "#!pythonPackages b c",
       "#!pythonPackages d e f"
     ]

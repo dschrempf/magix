@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 -- |
 -- Module      :  Magix.Languages.Haskell.Directives
 -- Description :  Haskell directives for Magix
@@ -18,9 +16,12 @@ module Magix.Languages.Haskell.Directives
 where
 
 import Control.Applicative (Alternative (..))
-import Data.Foldable (Foldable (..))
 import Data.Text (Text)
-import Magix.Directives.Common (Parser, pDirectiveWithValues, pLanguageDirectives)
+import Magix.Languages.Common.Directives
+  ( Parser,
+    pDirectiveWithValues,
+    pManyDirectives,
+  )
 import Text.Megaparsec (try)
 import Prelude hiding (readFile)
 
@@ -30,24 +31,24 @@ data HaskellDirectives = HaskellDirectives
   }
   deriving (Eq, Show)
 
-data HaskellDirective = HaskellPackages ![Text] | GhcFlags ![Text]
+instance Semigroup HaskellDirectives where
+  (<>) :: HaskellDirectives -> HaskellDirectives -> HaskellDirectives
+  HaskellDirectives xs1 ys1 <> HaskellDirectives xs2 ys2 =
+    HaskellDirectives (xs1 <> xs2) (ys1 <> ys2)
 
-pHaskellPackages :: Parser HaskellDirective
-pHaskellPackages = HaskellPackages <$> pDirectiveWithValues "haskellPackages"
+instance Monoid HaskellDirectives where
+  mempty :: HaskellDirectives
+  mempty = HaskellDirectives mempty mempty
 
-pGhcFlags :: Parser HaskellDirective
-pGhcFlags = GhcFlags <$> pDirectiveWithValues "ghcFlags"
+pHaskellPackages :: Parser HaskellDirectives
+pHaskellPackages = do
+  pkgs <- pDirectiveWithValues "haskellPackages"
+  pure $ HaskellDirectives pkgs []
 
-pHaskellDirective :: Parser HaskellDirective
-pHaskellDirective = try pHaskellPackages <|> pGhcFlags
-
-addHaskellDirective :: HaskellDirectives -> HaskellDirective -> HaskellDirectives
-addHaskellDirective (HaskellDirectives ps fs) = \case
-  (HaskellPackages ps') -> HaskellDirectives (ps <> ps') fs
-  (GhcFlags fs') -> HaskellDirectives ps (fs <> fs')
-
-combineHaskellDirectives :: [HaskellDirective] -> HaskellDirectives
-combineHaskellDirectives = foldl' addHaskellDirective (HaskellDirectives [] [])
+pGhcFlags :: Parser HaskellDirectives
+pGhcFlags = do
+  flags <- pDirectiveWithValues "ghcFlags"
+  pure $ HaskellDirectives [] flags
 
 pHaskellDirectives :: Parser HaskellDirectives
-pHaskellDirectives = pLanguageDirectives "haskell" pHaskellDirective combineHaskellDirectives
+pHaskellDirectives = pManyDirectives $ try pHaskellPackages <|> pGhcFlags
