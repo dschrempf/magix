@@ -59,8 +59,8 @@ spec = do
 
   describe "pMagixDirective" $ do
     it "parses sample Magix directives" $ do
-      parse pMagixDirective "" "#!magix haskell" `shouldBe` Right "haskell"
-      parse pMagixDirective "" "#!magix foo" `shouldBe` Right "foo"
+      parse' pMagixDirective "#!magix haskell" `shouldBe` "haskell"
+      parse' pMagixDirective "#!magix foo" `shouldBe` "foo"
 
     it "fails on wrong Magix directives" $ do
       parse pMagixDirective "" "#!magic haskell" `shouldSatisfy` isLeft
@@ -68,11 +68,13 @@ spec = do
 
   describe "pLanguageDirectives" $ do
     it "parses sample language directives" $ do
-      parse pLanguageDirectives "" "#!magix bash\n#!packages bar" `shouldSatisfy` isRight
-      parse pLanguageDirectives "" "#!magix bash" `shouldSatisfy` isRight
-      parse pLanguageDirectives "" "#!magix bash\t" `shouldSatisfy` isRight
-      parse pLanguageDirectives "" "#!magix \tbash\t" `shouldSatisfy` isRight
-      parse pLanguageDirectives "" "#!magix \tbash\n\n" `shouldSatisfy` isRight
+      let emptyBashDirectives = Bash $ BashDirectives []
+      parse' pLanguageDirectives "#!magix bash\n#!packages bar"
+        `shouldBe` Bash (BashDirectives ["bar"])
+      parse' pLanguageDirectives "#!magix bash" `shouldBe` emptyBashDirectives
+      parse' pLanguageDirectives "#!magix bash\t" `shouldBe` emptyBashDirectives
+      parse' pLanguageDirectives "#!magix \tbash\t" `shouldBe` emptyBashDirectives
+      parse' pLanguageDirectives "#!magix \tbash\n\n" `shouldBe` emptyBashDirectives
 
     it "fails on wrong language directives" $ do
       parse pLanguageDirectives "" "#! bar" `shouldSatisfy` isLeft

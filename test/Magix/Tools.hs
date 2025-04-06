@@ -25,7 +25,7 @@ import Magix.Expression (getNixExpression, getReplacements, getTemplate)
 import System.Directory (createDirectory, getTemporaryDirectory)
 import System.FilePath ((</>))
 import System.Random.Stateful (randomIO, randomRIO)
-import Test.Hspec (Spec, describe, it, shouldBe, shouldSatisfy)
+import Test.Hspec (HasCallStack, Spec, describe, it, shouldBe, shouldSatisfy)
 import Text.Megaparsec
   ( Parsec,
     ShowErrorComponent,
@@ -62,7 +62,11 @@ getRandomFakeConfig = do
       (tmp </> "fakeResultDir")
 
 parse' ::
-  (VisualStream s, TraversableStream s, ShowErrorComponent e) => Parsec e s a -> s -> a
+  (HasCallStack) =>
+  (VisualStream s, TraversableStream s, ShowErrorComponent e) =>
+  Parsec e s a ->
+  s ->
+  a
 parse' p x = either (error . errorBundlePretty) id $ parse p "" x
 
 allReplacementsUsed :: Text -> [(Text, Text)] -> Bool
