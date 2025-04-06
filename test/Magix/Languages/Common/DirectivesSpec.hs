@@ -26,15 +26,25 @@ import Prelude hiding (readFile)
 
 spec :: Spec
 spec = do
-  let foos = pDirectiveWithValues "foo"
   describe "pDirectiveWithValue" $ do
     let foobar = pDirectiveWithValue "foo" (chunk "bar")
-    it "parses directive with one value" $ do
+    it "parses directive with one value" $
       parse foobar "" "#!foo bar" `shouldBe` Right "bar"
 
     it "fails on directive with space" $
       parse foobar "" "#! foo bar" `shouldSatisfy` isLeft
 
+    it "partially parses directives with more values" $ do
+      parse foobar "" "#!foo bar baz" `shouldBe` Right "bar"
+      parse (foobar <* eof) "" "#!foo bar baz" `shouldSatisfy` isLeft
+
+    it "fails on bogus directives" $ do
+      parse foobar "" "#!\n" `shouldSatisfy` isLeft
+      parse foobar "" "#! " `shouldSatisfy` isLeft
+      parse foobar "" " " `shouldSatisfy` isLeft
+      parse foobar "" " bogus" `shouldSatisfy` isLeft
+
+  let foos = pDirectiveWithValues "foo"
   describe "pDirectiveWithValues" $ do
     it "parses directives with one or more values" $ do
       parse foos "" "#!foo bar" `shouldBe` Right ["bar"]
@@ -44,8 +54,17 @@ spec = do
       parse foos "" "#!foo " `shouldSatisfy` isLeft
       parse foos "" "#!foo" `shouldSatisfy` isLeft
       parse foos "" "#!foo\n" `shouldSatisfy` isLeft
+
+    it "fails on directives with space" $ do
+      parse foos "" "#! foo bar" `shouldSatisfy` isLeft
+      parse foos "" "#! foo" `shouldSatisfy` isLeft
+      parse foos "" "#! foo bar baz" `shouldSatisfy` isLeft
+
+    it "fails on bogus directives" $ do
       parse foos "" "#!\n" `shouldSatisfy` isLeft
       parse foos "" "#! " `shouldSatisfy` isLeft
+      parse foos "" " " `shouldSatisfy` isLeft
+      parse foos "" " bogus" `shouldSatisfy` isLeft
 
   describe "pManyDirectives" $ do
     let pDirectives = pManyDirectives foos <* eof
