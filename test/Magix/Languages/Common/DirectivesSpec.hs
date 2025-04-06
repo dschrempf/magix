@@ -29,7 +29,7 @@ spec = do
   describe "pDirectiveWithValue" $ do
     let foobar = pDirectiveWithValue "foo" (chunk "bar")
     it "parses directive with one value" $
-      parse foobar "" "#!foo bar" `shouldBe` Right "bar"
+      parse (foobar <* eof) "" "#!foo bar" `shouldBe` Right "bar"
 
     it "fails on directive with space" $
       parse foobar "" "#! foo bar" `shouldSatisfy` isLeft
@@ -44,7 +44,7 @@ spec = do
       parse foobar "" " " `shouldSatisfy` isLeft
       parse foobar "" " bogus" `shouldSatisfy` isLeft
 
-  let foos = pDirectiveWithValues "foo"
+  let foos = pDirectiveWithValues "foo" <* eof
   describe "pDirectiveWithValues" $ do
     it "parses directives with one or more values" $ do
       parse foos "" "#!foo bar" `shouldBe` Right ["bar"]
@@ -67,11 +67,12 @@ spec = do
       parse foos "" " bogus" `shouldSatisfy` isLeft
 
   describe "pManyDirectives" $ do
-    let pDirectives = pManyDirectives foos <* eof
+    let pDirectives = pManyDirectives (pDirectiveWithValues "foo") <* eof
     it "parses sample directives" $ do
       parse pDirectives "" "" `shouldBe` Right []
       parse pDirectives "" "#!foo 1 2 3" `shouldBe` Right ["1", "2", "3"]
       parse pDirectives "" "#!foo 1 2\n#!foo 4 5" `shouldBe` Right ["1", "2", "4", "5"]
+      parse pDirectives "" "#!foo 1 2\n#!foo 4 5\n" `shouldBe` Right ["1", "2", "4", "5"]
 
     it "fails on erroneous directives" $ do
       parse pDirectives "" "s" `shouldSatisfy` isLeft
