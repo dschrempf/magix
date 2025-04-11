@@ -16,7 +16,8 @@ where
 
 import Data.Text (Text, unwords)
 import Magix.Languages.Bash.Directives (BashDirectives (..))
+import Magix.Languages.Common.Expression (Replacement)
 import Prelude hiding (unwords)
 
-getBashReplacements :: BashDirectives -> [(Text, Text)]
+getBashReplacements :: BashDirectives -> [Replacement]
 getBashReplacements (BashDirectives ps) = [("__PACKAGES__", unwords ps)]

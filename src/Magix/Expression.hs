@@ -22,6 +22,7 @@ import Data.Text.IO (readFile)
 import Magix.Config (Config (..))
 import Magix.Directives (Directives (..), getLanguageName)
 import Magix.Languages.Bash.Expression (getBashReplacements)
+import Magix.Languages.Common.Expression (Replacement, getCommonReplacements)
 import Magix.Languages.Haskell.Expression (getHaskellReplacements)
 import Magix.Languages.Python.Expression (getPythonReplacements)
 import Paths_magix (getDataFileName)
@@ -33,18 +34,12 @@ getTemplatePath languageName = "src/Magix/Languages/" <> languageName <> "/Templ
 getTemplate :: String -> IO Text
 getTemplate languageName = getDataFileName (getTemplatePath languageName) >>= readFile
 
-getCommonReplacements :: Config -> [(Text, Text)]
-getCommonReplacements c =
-  [ ("__SCRIPT_NAME__", pack $ scriptName c),
-    ("__SCRIPT_SOURCE__", pack $ scriptLinkPath c)
-  ]
-
-getLanguageReplacements :: Directives -> [(Text, Text)]
+getLanguageReplacements :: Directives -> [Replacement]
 getLanguageReplacements (Bash ds) = getBashReplacements ds
 getLanguageReplacements (Haskell ds) = getHaskellReplacements ds
 getLanguageReplacements (Python ds) = getPythonReplacements ds
 
-getReplacements :: Config -> Directives -> [(Text, Text)]
+getReplacements :: Config -> Directives -> [Replacement]
 getReplacements c ds = getCommonReplacements c ++ getLanguageReplacements ds
 
 getNixExpression :: Config -> Directives -> IO Text

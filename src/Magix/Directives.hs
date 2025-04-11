@@ -56,14 +56,15 @@ pMagixDirective = pDirectiveWithValue "magix" pLanguage <* hspace
 pLanguageDirectives :: Parser Directives
 pLanguageDirectives = do
   language <- pMagixDirective
-  let withNewline p = try (newline *> p) <|> mempty
   directives <- case language of
     "bash" -> Bash <$> withNewline pBashDirectives
     "haskell" -> Haskell <$> withNewline pHaskellDirectives
     "python" -> Python <$> withNewline pPythonDirectives
-    unknownLanguage -> fail $ "unknown language: " <> unpack unknownLanguage
+    unknownLanguage -> fail $ "Unknown language: " <> unpack unknownLanguage
   notFollowedBy $ space *> chunk "#!"
   pure directives
+  where
+    withNewline p = try (newline *> p) <|> mempty
 
 pDirectives :: Parser Directives
 pDirectives = pShebang *> hspace *> newline *> pLanguageDirectives

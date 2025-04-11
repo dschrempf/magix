@@ -64,6 +64,7 @@ library
     Magix.Languages.Bash.Directives
     Magix.Languages.Bash.Expression
     Magix.Languages.Common.Directives
+    Magix.Languages.Common.Expression
     Magix.Languages.Haskell.Directives
     Magix.Languages.Haskell.Expression
     Magix.Languages.Python.Directives

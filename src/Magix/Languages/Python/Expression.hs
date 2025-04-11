@@ -14,9 +14,10 @@ module Magix.Languages.Python.Expression
   )
 where
 
-import Data.Text (Text, unwords)
+import Data.Text (unwords)
+import Magix.Languages.Common.Expression (Replacement)
 import Magix.Languages.Python.Directives (PythonDirectives (..))
 import Prelude hiding (unwords)
 
-getPythonReplacements :: PythonDirectives -> [(Text, Text)]
+getPythonReplacements :: PythonDirectives -> [Replacement]
 getPythonReplacements (PythonDirectives ps) = [("__PYTHON_PACKAGES__", unwords ps)]
