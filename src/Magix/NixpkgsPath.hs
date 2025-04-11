@@ -29,25 +29,21 @@ isValidPathChar :: Char -> Bool
 isValidPathChar x = x /= ':' && not (isSpace x)
 
 pNixpkgsPath :: Parser FilePath
-pNixpkgsPath =
-  chunk "nixpkgs="
-    *> takeWhile1P
-      (Just "pathComponents")
-      isValidPathChar
+pNixpkgsPath = chunk "nixpkgs=" *> takeWhile1P (Just "pathComponents") isValidPathChar
 
 pNixPath :: Parser FilePath
 pNixPath = pNixpkgsPath <|> (anySingle *> pNixPath)
 
-data NoNixpkgsError = NoNixpkgsError
+data NixpkgsPathError = NixpkgsPathError
   { _nixPath :: !String,
     _err :: !String
   }
   deriving (Eq, Show)
 
-instance Exception NoNixpkgsError
+instance Exception NixpkgsPathError
 
-getDefaultNixpkgsPath :: IO (Either NoNixpkgsError FilePath)
+getDefaultNixpkgsPath :: IO (Either NixpkgsPathError FilePath)
 getDefaultNixpkgsPath = do
   nixPath <- getEnv "NIX_PATH"
-  let fromErr e = NoNixpkgsError nixPath $ errorBundlePretty e
+  let fromErr e = NixpkgsPathError nixPath $ errorBundlePretty e
   pure $ first fromErr $ parse pNixPath "" nixPath
