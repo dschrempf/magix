@@ -15,35 +15,32 @@ module Magix.NixpkgsPathSpec
 where
 
 import Magix.NixpkgsPath (getDefaultNixpkgsPath, pNixPath, pNixpkgsPath)
+import Magix.Tools (parseS)
 import System.Environment (setEnv)
 import Test.Hspec (Spec, describe, it, shouldBe)
-import Text.Megaparsec (parse)
 
 spec :: Spec
 spec = do
   describe "pNixpkgsPath" $ do
+    let parsesAs = parseS pNixpkgsPath
     it "parses Nixpkgs path correctly" $ do
-      parse pNixpkgsPath "" "nixpkgs=/path/to/nixpkgs"
-        `shouldBe` Right "/path/to/nixpkgs"
-      parse pNixpkgsPath "" "nixpkgs=/path/to/nixpkgs:some=/other/path"
-        `shouldBe` Right "/path/to/nixpkgs"
-      parse pNixpkgsPath "" "nixpkgs=/path/to/nixpkgs some=/other/path"
-        `shouldBe` Right "/path/to/nixpkgs"
+      "nixpkgs=/path/to/nixpkgs" `parsesAs` "/path/to/nixpkgs"
+      "nixpkgs=/path/to/nixpkgs:some=/other/path" `parsesAs` "/path/to/nixpkgs"
+      "nixpkgs=/path/to/nixpkgs some=/other/path" `parsesAs` "/path/to/nixpkgs"
 
   describe "pNixPath" $ do
+    let parsesAs = parseS pNixPath
     it "parses NIX_PATH correctly" $ do
-      parse pNixPath "" "nixpkgs=/path/to/nixpkgs"
-        `shouldBe` Right "/path/to/nixpkgs"
-      parse pNixPath "" "nixpkgs=/path/to/nixpkgs:some=/other/path"
-        `shouldBe` Right "/path/to/nixpkgs"
-      parse pNixPath "" "other=/path/here:nixpkgs=/path/to/nixpkgs:some=/other/path"
-        `shouldBe` Right "/path/to/nixpkgs"
-      parse pNixPath "" "other=/path/here:and=/another:nixpkgs=/path/to/nixpkgs"
-        `shouldBe` Right "/path/to/nixpkgs"
-      parse pNixPath "" "other=/path/here:and=/another:nixpkgs=/path/to/nixpkgs some=/other/path"
-        `shouldBe` Right "/path/to/nixpkgs"
-      parse pNixPath "" "nixpkgs=/nix/store/lsy6c2f9alj2gkjj36h754kk63x6701l-source"
-        `shouldBe` Right "/nix/store/lsy6c2f9alj2gkjj36h754kk63x6701l-source"
+      "nixpkgs=/path/to/nixpkgs" `parsesAs` "/path/to/nixpkgs"
+      "nixpkgs=/path/to/nixpkgs:some=/other/path" `parsesAs` "/path/to/nixpkgs"
+      "other=/path/here:nixpkgs=/path/to/nixpkgs:some=/other/path"
+        `parsesAs` "/path/to/nixpkgs"
+      "other=/path/here:and=/another:nixpkgs=/path/to/nixpkgs"
+        `parsesAs` "/path/to/nixpkgs"
+      "other=/path/here:and=/another:nixpkgs=/path/to/nixpkgs some=/other/path"
+        `parsesAs` "/path/to/nixpkgs"
+      "nixpkgs=/nix/store/lsy6c2f9alj2gkjj36h754kk63x6701l-source"
+        `parsesAs` "/nix/store/lsy6c2f9alj2gkjj36h754kk63x6701l-source"
 
   describe "pDefaultNixpkgsPath" $ do
     it "works for a sample value" $ do

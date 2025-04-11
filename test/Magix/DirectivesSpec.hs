@@ -14,7 +14,6 @@ module Magix.DirectivesSpec
   )
 where
 
-import Data.Either (isLeft, isRight)
 import Data.Text (Text, unlines)
 import Data.Text.IO (readFile)
 import Magix.Directives
@@ -26,8 +25,8 @@ import Magix.Directives
   )
 import Magix.Languages.Bash.Directives (BashDirectives (..))
 import Magix.Languages.Haskell.Directives (HaskellDirectives (..))
-import Magix.Tools (parse')
-import Test.Hspec (Spec, describe, it, shouldBe, shouldSatisfy)
+import Magix.Tools (parseF, parseS)
+import Test.Hspec (Spec, describe, it, shouldBe)
 import Text.Megaparsec (parse)
 import Prelude hiding (readFile, unlines)
 
@@ -47,42 +46,41 @@ spec :: Spec
 spec = do
   describe "pShebang" $ do
     it "parses the shebang" $
-      parse pShebang "" "#!/usr/bin/env magix" `shouldSatisfy` isRight
+      parseS pShebang "#!/usr/bin/env magix" "magix"
 
     it "fails on wrong shebangs" $ do
-      parse pShebang "" " #!/usr/bin/env magix" `shouldSatisfy` isLeft
-      parse pShebang "" "#! /usr/bin/env magix" `shouldSatisfy` isLeft
-      parse pShebang "" "#!/usr/bin/env magis" `shouldSatisfy` isLeft
-      parse pShebang "" "#!/usr/bin/env" `shouldSatisfy` isLeft
-      parse pShebang "" "#/usr/bin/env magix" `shouldSatisfy` isLeft
-      parse pShebang "" "#/usr/bin/env3magix" `shouldSatisfy` isLeft
+      parseF pShebang " #!/usr/bin/env magix"
+      parseF pShebang "#! /usr/bin/env magix"
+      parseF pShebang "#!/usr/bin/env magis"
+      parseF pShebang "#!/usr/bin/env"
+      parseF pShebang "#/usr/bin/env magix"
+      parseF pShebang "#/usr/bin/env3magix"
 
   describe "pMagixDirective" $ do
     it "parses sample Magix directives" $ do
-      parse' pMagixDirective "#!magix haskell" `shouldBe` "haskell"
-      parse' pMagixDirective "#!magix foo" `shouldBe` "foo"
+      parseS pMagixDirective "#!magix haskell" "haskell"
+      parseS pMagixDirective "#!magix foo" "foo"
 
     it "fails on wrong Magix directives" $ do
-      parse pMagixDirective "" "#!magic haskell" `shouldSatisfy` isLeft
-      parse pMagixDirective "" "#!magic" `shouldSatisfy` isLeft
+      parseF pMagixDirective "#!magic haskell"
+      parseF pMagixDirective "#!magic"
 
   describe "pLanguageDirectives" $ do
     it "parses sample language directives" $ do
       let emptyBashDirectives = Bash $ BashDirectives []
-      parse' pLanguageDirectives "#!magix bash\n#!packages bar"
-        `shouldBe` Bash (BashDirectives ["bar"])
-      parse' pLanguageDirectives "#!magix bash" `shouldBe` emptyBashDirectives
-      parse' pLanguageDirectives "#!magix bash\t" `shouldBe` emptyBashDirectives
-      parse' pLanguageDirectives "#!magix \tbash\t" `shouldBe` emptyBashDirectives
-      parse' pLanguageDirectives "#!magix \tbash\n\n" `shouldBe` emptyBashDirectives
+      parseS pLanguageDirectives "#!magix bash\n#!packages bar" $ Bash (BashDirectives ["bar"])
+      parseS pLanguageDirectives "#!magix bash" emptyBashDirectives
+      parseS pLanguageDirectives "#!magix bash\t" emptyBashDirectives
+      parseS pLanguageDirectives "#!magix \tbash\t" emptyBashDirectives
+      parseS pLanguageDirectives "#!magix \tbash\n\n" emptyBashDirectives
 
     it "fails on wrong language directives" $ do
-      parse pLanguageDirectives "" "#! bar" `shouldSatisfy` isLeft
-      parse pLanguageDirectives "" "#!magix bash\n\n#!packages bar" `shouldSatisfy` isLeft
-      parse pLanguageDirectives "" "#!magix bash #!packages bar" `shouldSatisfy` isLeft
-      parse pLanguageDirectives "" "#! magix bash\n#!packages bar" `shouldSatisfy` isLeft
-      parse pLanguageDirectives "" "#!magix bash\n\n#!" `shouldSatisfy` isLeft
-      parse pLanguageDirectives "" "#!magix bash\n\n#!foo" `shouldSatisfy` isLeft
+      parseF pLanguageDirectives "#! bar"
+      parseF pLanguageDirectives "#!magix bash\n\n#!packages bar"
+      parseF pLanguageDirectives "#!magix bash #!packages bar"
+      parseF pLanguageDirectives "#! magix bash\n#!packages bar"
+      parseF pLanguageDirectives "#!magix bash\n\n#!"
+      parseF pLanguageDirectives "#!magix bash\n\n#!foo"
 
   describe "pDirectives" $ do
     it "parses minimal sample scripts" $ do
@@ -101,7 +99,7 @@ spec = do
                 "#!packages a ",
                 ""
               ]
-      parse' pDirectives spaceTest `shouldBe` Bash (BashDirectives ["a"])
+      parseS pDirectives spaceTest $ Bash (BashDirectives ["a"])
       let newlineTest :: Text =
             unlines
               [ "#!/usr/bin/env magix",
@@ -109,23 +107,23 @@ spec = do
                 "#!packages a",
                 ""
               ]
-      parse' pDirectives newlineTest `shouldBe` Bash (BashDirectives ["a"])
+      parseS pDirectives newlineTest $ Bash (BashDirectives ["a"])
       let newlineEmptyTest :: Text =
             unlines
               [ "#!/usr/bin/env magix",
                 "#!magix bash",
                 ""
               ]
-      parse' pDirectives newlineEmptyTest `shouldBe` Bash (BashDirectives [])
+      parseS pDirectives newlineEmptyTest $ Bash (BashDirectives [])
       let emptySpaceTest :: Text =
             unlines
               [ "#!/usr/bin/env \t magix\t ",
                 "#!magix \t bash \t"
               ]
-      parse' pDirectives emptySpaceTest `shouldBe` Bash (BashDirectives [])
+      parseS pDirectives emptySpaceTest $ Bash (BashDirectives [])
 
     it "fails on some edge cases" $
       let directiveNotNewlineTest :: Text =
             unlines
               ["#!/usr/bin/env \t magix\t #!magix \t bash \t"]
-       in parse pDirectives "" directiveNotNewlineTest `shouldSatisfy` isLeft
+       in parseF pDirectives directiveNotNewlineTest

@@ -14,14 +14,14 @@ module Magix.Languages.Common.DirectivesSpec
   )
 where
 
-import Data.Either (isLeft)
 import Magix.Languages.Common.Directives
   ( pDirectiveWithValue,
     pDirectiveWithValues,
     pManyDirectives,
   )
-import Test.Hspec (Spec, describe, it, shouldBe, shouldSatisfy)
-import Text.Megaparsec (MonadParsec (eof), chunk, parse)
+import Magix.Tools (parseF, parseS)
+import Test.Hspec (Spec, describe, it)
+import Text.Megaparsec (MonadParsec (eof), chunk)
 import Prelude hiding (readFile)
 
 spec :: Spec
@@ -29,53 +29,53 @@ spec = do
   describe "pDirectiveWithValue" $ do
     let foobar = pDirectiveWithValue "foo" (chunk "bar")
     it "parses directive with one value" $
-      parse (foobar <* eof) "" "#!foo bar" `shouldBe` Right "bar"
+      parseS (foobar <* eof) "#!foo bar" "bar"
 
     it "fails on directive with space" $
-      parse foobar "" "#! foo bar" `shouldSatisfy` isLeft
+      parseF foobar "#! foo bar"
 
     it "partially parses directives with more values" $ do
-      parse foobar "" "#!foo bar baz" `shouldBe` Right "bar"
-      parse (foobar <* eof) "" "#!foo bar baz" `shouldSatisfy` isLeft
+      parseS foobar "#!foo bar baz" "bar"
+      parseF (foobar <* eof) "#!foo bar baz"
 
     it "fails on bogus directives" $ do
-      parse foobar "" "#!\n" `shouldSatisfy` isLeft
-      parse foobar "" "#! " `shouldSatisfy` isLeft
-      parse foobar "" " " `shouldSatisfy` isLeft
-      parse foobar "" " bogus" `shouldSatisfy` isLeft
+      parseF foobar "#!\n"
+      parseF foobar "#! "
+      parseF foobar " "
+      parseF foobar " bogus"
 
   let foos = pDirectiveWithValues "foo" <* eof
   describe "pDirectiveWithValues" $ do
     it "parses directives with one or more values" $ do
-      parse foos "" "#!foo bar" `shouldBe` Right ["bar"]
-      parse foos "" "#!foo bar baz" `shouldBe` Right ["bar", "baz"]
+      parseS foos "#!foo bar" ["bar"]
+      parseS foos "#!foo bar baz" ["bar", "baz"]
 
     it "fails on directives without a value" $ do
-      parse foos "" "#!foo " `shouldSatisfy` isLeft
-      parse foos "" "#!foo" `shouldSatisfy` isLeft
-      parse foos "" "#!foo\n" `shouldSatisfy` isLeft
+      parseF foos "#!foo "
+      parseF foos "#!foo"
+      parseF foos "#!foo\n"
 
     it "fails on directives with space" $ do
-      parse foos "" "#! foo bar" `shouldSatisfy` isLeft
-      parse foos "" "#! foo" `shouldSatisfy` isLeft
-      parse foos "" "#! foo bar baz" `shouldSatisfy` isLeft
+      parseF foos "#! foo bar"
+      parseF foos "#! foo"
+      parseF foos "#! foo bar baz"
 
     it "fails on bogus directives" $ do
-      parse foos "" "#!\n" `shouldSatisfy` isLeft
-      parse foos "" "#! " `shouldSatisfy` isLeft
-      parse foos "" " " `shouldSatisfy` isLeft
-      parse foos "" " bogus" `shouldSatisfy` isLeft
+      parseF foos "#!\n"
+      parseF foos "#! "
+      parseF foos " "
+      parseF foos " bogus"
 
   describe "pManyDirectives" $ do
     let pDirectives = pManyDirectives (pDirectiveWithValues "foo") <* eof
     it "parses sample directives" $ do
-      parse pDirectives "" "" `shouldBe` Right []
-      parse pDirectives "" "#!foo 1 2 3" `shouldBe` Right ["1", "2", "3"]
-      parse pDirectives "" "#!foo 1 2\n#!foo 4 5" `shouldBe` Right ["1", "2", "4", "5"]
-      parse pDirectives "" "#!foo 1 2\n#!foo 4 5\n" `shouldBe` Right ["1", "2", "4", "5"]
+      parseS pDirectives "" []
+      parseS pDirectives "#!foo 1 2 3" ["1", "2", "3"]
+      parseS pDirectives "#!foo 1 2\n#!foo 4 5" ["1", "2", "4", "5"]
+      parseS pDirectives "#!foo 1 2\n#!foo 4 5\n" ["1", "2", "4", "5"]
 
     it "fails on erroneous directives" $ do
-      parse pDirectives "" "s" `shouldSatisfy` isLeft
-      parse pDirectives "" "\n" `shouldSatisfy` isLeft
-      parse pDirectives "" "#!foo " `shouldSatisfy` isLeft
-      parse pDirectives "" "#!foo 1 2\n\n#!foo 4 5" `shouldSatisfy` isLeft
+      parseF pDirectives "s"
+      parseF pDirectives "\n"
+      parseF pDirectives "#!foo "
+      parseF pDirectives "#!foo 1 2\n\n#!foo 4 5"

@@ -11,13 +11,16 @@
 -- Creation date: Mon Oct 21 21:56:26 2024.
 module Magix.Tools
   ( getRandomFakeConfig,
-    parse',
+    parseS,
+    parseF,
     testExpression,
   )
 where
 
 import Control.Monad (replicateM)
+import Data.Bifunctor (Bifunctor (first))
 import Data.ByteString (ByteString, pack)
+import Data.Either (isLeft)
 import Data.Text (Text, isInfixOf, unwords)
 import Magix.Config (Config (..))
 import Magix.Directives (Directives, getLanguageName)
@@ -25,7 +28,7 @@ import Magix.Expression (getNixExpression, getReplacements, getTemplate)
 import System.Directory (createDirectory, getTemporaryDirectory)
 import System.FilePath ((</>))
 import System.Random.Stateful (randomIO, randomRIO)
-import Test.Hspec (HasCallStack, Spec, describe, it, shouldBe, shouldSatisfy)
+import Test.Hspec (Expectation, HasCallStack, Spec, describe, it, shouldBe, shouldSatisfy)
 import Text.Megaparsec
   ( Parsec,
     ShowErrorComponent,
@@ -61,13 +64,21 @@ getRandomFakeConfig = do
       (tmp </> "fakeBuildExprPath")
       (tmp </> "fakeResultDir")
 
-parse' ::
-  (HasCallStack) =>
+parseS ::
+  (HasCallStack, Show a, Eq a) =>
   (VisualStream s, TraversableStream s, ShowErrorComponent e) =>
   Parsec e s a ->
   s ->
-  a
-parse' p x = either (error . errorBundlePretty) id $ parse p "" x
+  a ->
+  Expectation
+parseS p x e = first errorBundlePretty (parse p "" x) `shouldBe` Right e
+
+parseF ::
+  (VisualStream s, TraversableStream s, ShowErrorComponent e, Show b) =>
+  Parsec e s b ->
+  s ->
+  Expectation
+parseF p x = first errorBundlePretty (parse p "" x) `shouldSatisfy` isLeft
 
 allReplacementsUsed :: Text -> [(Text, Text)] -> Bool
 allReplacementsUsed x = all (\(r, _) -> r `isInfixOf` x)

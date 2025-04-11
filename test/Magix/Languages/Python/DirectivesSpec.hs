@@ -16,8 +16,8 @@ where
 
 import Data.Text (Text, unlines)
 import Magix.Languages.Python.Directives (PythonDirectives (..), pPythonDirectives)
-import Magix.Tools (parse')
-import Test.Hspec (Spec, describe, it, shouldBe)
+import Magix.Tools (parseS)
+import Test.Hspec (Spec, describe, it)
 import Prelude hiding (unlines)
 
 empty :: Text
@@ -38,10 +38,11 @@ spec :: Spec
 spec = do
   describe "pPythonDirectives" $ do
     it "parses empty directives" $ do
-      parse' pPythonDirectives empty `shouldBe` PythonDirectives []
+      parseS pPythonDirectives empty $ PythonDirectives []
 
     it "parses minimal sample directives" $ do
-      parse' pPythonDirectives minimal `shouldBe` PythonDirectives ["numpy"]
+      parseS pPythonDirectives minimal $ PythonDirectives ["numpy"]
 
     it "parses more interesting sample directives with multiple declarations" $ do
-      parse' pPythonDirectives multiple `shouldBe` PythonDirectives ["a", "b", "c", "d", "e", "f"]
+      parseS pPythonDirectives multiple $
+        PythonDirectives ["a", "b", "c", "d", "e", "f"]
