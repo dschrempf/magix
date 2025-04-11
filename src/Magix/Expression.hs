@@ -17,7 +17,7 @@ module Magix.Expression
 where
 
 import Data.Foldable (Foldable (..))
-import Data.Text (Text, pack, replace)
+import Data.Text (Text, replace)
 import Data.Text.IO (readFile)
 import Magix.Config (Config (..))
 import Magix.Directives (Directives (..), getLanguageName)

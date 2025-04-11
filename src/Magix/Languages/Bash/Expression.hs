@@ -14,7 +14,7 @@ module Magix.Languages.Bash.Expression
   )
 where
 
-import Data.Text (Text, unwords)
+import Data.Text (unwords)
 import Magix.Languages.Bash.Directives (BashDirectives (..))
 import Magix.Languages.Common.Expression (Replacement)
 import Prelude hiding (unwords)
