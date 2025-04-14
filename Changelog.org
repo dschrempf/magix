@@ -1,4 +1,5 @@
 * Unreleased Version 0.4.0.1
+- Toolchain update to GHC 9.10
 - Refactor "Expression" modules
 - Simplify test suite
 
