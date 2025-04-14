@@ -17,7 +17,6 @@ where
 import Crypto.Hash.SHA256 (finalize, init, update)
 import Data.ByteString (ByteString, toStrict)
 import Data.ByteString.Builder (Builder, charUtf8, intDec, toLazyByteString)
-import Data.Foldable (Foldable (..))
 import Data.Version (Version (versionBranch))
 import Paths_magix (version)
 import Prelude hiding (init)
