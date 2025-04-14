@@ -52,7 +52,8 @@
               # Haskell toolchain.
               hpkgs.cabal-fmt
               hpkgs.cabal-install
-              hpkgs.haskell-language-server
+              # HACK: Use custom-built Haskell Language Server (see below).
+              # hpkgs.haskell-language-server
             ];
             buildInputs = [ ];
             doBenchmark = true;
@@ -61,6 +62,8 @@
             NIX_PATH = "nixpkgs=${nixpkgs}";
             shellHook = ''
               export PATH="$PWD/scripts:$PATH"
+              # HACK: Use custom-built Haskell Language Server (see above).
+              export PATH="$HOME/.local/bin:$PATH"
             '';
           };
         };
