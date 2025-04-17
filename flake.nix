@@ -53,6 +53,7 @@
               hpkgs.cabal-fmt
               hpkgs.cabal-install
               # HACK: Use custom-built Haskell Language Server (see below).
+              hpkgs.ormolu
               # hpkgs.haskell-language-server
             ];
             buildInputs = [ ];
