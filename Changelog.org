@@ -1,4 +1,7 @@
-* Unreleased Version 0.4.0.1
+* Unreleased
+
+* Version 0.4.0.1
+- Update and improve GitHub workflows (use Nix and Cachix)
 - Toolchain update to GHC 9.10
 - Refactor "Expression" modules
 - Simplify test suite
