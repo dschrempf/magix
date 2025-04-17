@@ -66,10 +66,28 @@
               export PATH="$HOME/.local/bin:$PATH"
             '';
           };
+
+          devShells.check = hpkgs.shellFor {
+            packages = _: [ theseHpkgs.magix ];
+            buildInputs = [ hpkgs.cabal-install ];
+            NIX_PATH = "nixpkgs=${nixpkgs}";
+            shellHook = ''
+              export PATH="$PWD/scripts:$PATH"
+            '';
+          };
         };
     in
     {
       overlays.default = nixpkgs.lib.composeManyExtensions overlays;
     }
     // flake-utils.lib.eachDefaultSystem perSystem;
+
+  nixConfig = {
+    extra-substituters = [
+      "https://dschrempf-magix.cachix.org"
+    ];
+    extra-trusted-public-keys = [
+      "dschrempf-magix.cachix.org-1:cScG6NjZBiQvY7KjSPpQdUa9UXZVLz9rvUZHtuwdYwc="
+    ];
+  };
 }
