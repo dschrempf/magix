@@ -22,5 +22,5 @@ jobs:
       with:
         name: dschrempf-magix
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-    - run: nix build
-    - run: nix develop .#check --command check
+    - run: nix build --print-build-logs
+    - run: nix develop .#check --print-build-logs --command check
