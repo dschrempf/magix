@@ -15,29 +15,12 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - uses: haskell-actions/setup@v2
+    - uses: cachix/install-nix-action@v31
       with:
-        ghc-version: '9.10'
-
-    - name: Cache
-      uses: actions/cache@v4
-      env:
-        cache-name: cache-cabal
+        nix_path: nixpkgs=channel:nixos-unstable
+    - uses: cachix/cachix-action@v16
       with:
-        path: ~/.cabal
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/*.cabal') }}-${{ hashFiles('**/cabal.project') }}
-        restore-keys: |
-          ${{ runner.os }}-build-${{ env.cache-name }}-
-          ${{ runner.os }}-build-
-          ${{ runner.os }}-
-
-    - name: Install dependencies
-      run: |
-        cabal update
-        cabal build --only-dependencies --enable-tests --enable-benchmarks
-
-    - name: Build
-      run: cabal build --enable-tests --enable-benchmarks all
-
-    - name: Run tests
-      run: cabal test all
+        name: dschrempf-magix
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+    - run: nix build --print-build-logs
+    - run: nix develop .#check --print-build-logs --command check
