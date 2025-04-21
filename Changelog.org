@@ -1,4 +1,6 @@
 * Unreleased
+- More tests
+- Language data type
 
 * Version 0.4.0.1
 - Update and improve GitHub workflows (use Nix and Cachix)
