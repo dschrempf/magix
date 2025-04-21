@@ -16,7 +16,7 @@ where
 
 import Data.Text (Text, unlines)
 import Magix.Languages.Bash.Directives (BashDirectives (..), pBashDirectives)
-import Magix.Tools (parseS)
+import Magix.Tools (parseF, parseS)
 import Test.Hspec (Spec, describe, it)
 import Prelude hiding (unlines)
 
@@ -45,3 +45,9 @@ spec = do
 
     it "parses more interesting sample directives with multiple declarations" $ do
       parseS pBashDirectives multiple $ BashDirectives ["a", "b", "c", "d", "e", "f"]
+
+    it "fails on invalid directives" $ do
+      parseF pBashDirectives $ "#!package foo" -- Wrong keyword
+      parseF pBashDirectives $ "#!packages" -- Missing value
+      parseF pBashDirectives $ "#!foo bar" -- Unknown directive
+      parseF pBashDirectives $ "#!packages a\n#!foo b" -- Unknown directive mixed in

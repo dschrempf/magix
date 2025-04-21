@@ -10,8 +10,10 @@
 --
 -- Creation date: Fri Oct 18 09:17:40 2024.
 module Magix.Directives
-  ( Directives (..),
-    getLanguageName,
+  ( Language (..),
+    getLanguageLowercase,
+    Directives (..),
+    getLanguage,
     pShebang,
     pMagixDirective,
     pLanguageDirectives,
@@ -23,48 +25,57 @@ where
 import Control.Applicative (Alternative (..))
 import Control.Exception (Exception)
 import Data.Bifunctor (Bifunctor (..))
-import Data.Text (Text, pack, unpack)
+import Data.Text (Text, pack, toLower)
 import Magix.Languages.Bash.Directives (BashDirectives, pBashDirectives)
 import Magix.Languages.Common.Directives (Parser, pDirectiveWithValue)
 import Magix.Languages.Haskell.Directives (HaskellDirectives, pHaskellDirectives)
 import Magix.Languages.Python.Directives (PythonDirectives, pPythonDirectives)
-import Text.Megaparsec (MonadParsec (notFollowedBy, try), chunk, errorBundlePretty, parse)
-import Text.Megaparsec.Char (alphaNumChar, hspace, newline, space)
+import Text.Megaparsec (MonadParsec (notFollowedBy, try), choice, chunk, errorBundlePretty, parse)
+import Text.Megaparsec.Char (hspace, newline, space, string)
 import Prelude hiding (readFile)
 
+data Language = Bash | Haskell | Python
+  deriving (Eq, Show, Ord, Enum, Bounded)
+
+getLanguageLowercase :: Language -> Text
+getLanguageLowercase = toLower . pack . show
+
+pLanguage :: Parser Language
+pLanguage = choice $ map pAnyLanguage [minBound .. maxBound :: Language]
+  where
+    pAnyLanguage language = language <$ string (getLanguageLowercase language)
+
+getDirectivesParser :: Language -> Parser Directives
+getDirectivesParser l = case l of
+  Bash -> BashD <$> withNewline pBashDirectives
+  Haskell -> HaskellD <$> withNewline pHaskellDirectives
+  Python -> PythonD <$> withNewline pPythonDirectives
+  where
+    withNewline p = try (newline *> p) <|> mempty
+
 data Directives
-  = Bash !BashDirectives
-  | Haskell !HaskellDirectives
-  | Python !PythonDirectives
+  = BashD !BashDirectives
+  | HaskellD !HaskellDirectives
+  | PythonD !PythonDirectives
   deriving (Eq, Show)
 
--- | Use the language name to find the Nix expression template.
-getLanguageName :: Directives -> String
-getLanguageName (Bash _) = "Bash"
-getLanguageName (Haskell _) = "Haskell"
-getLanguageName (Python _) = "Python"
+getLanguage :: Directives -> Language
+getLanguage (BashD _) = Bash
+getLanguage (HaskellD _) = Haskell
+getLanguage (PythonD _) = Python
 
 pShebang :: Parser Text
 pShebang = pDirectiveWithValue "/usr/bin/env" (chunk "magix")
 
-pLanguage :: Parser Text
-pLanguage = pack <$> some alphaNumChar
-
-pMagixDirective :: Parser Text
+pMagixDirective :: Parser Language
 pMagixDirective = pDirectiveWithValue "magix" pLanguage <* hspace
 
 pLanguageDirectives :: Parser Directives
 pLanguageDirectives = do
   language <- pMagixDirective
-  directives <- case language of
-    "bash" -> Bash <$> withNewline pBashDirectives
-    "haskell" -> Haskell <$> withNewline pHaskellDirectives
-    "python" -> Python <$> withNewline pPythonDirectives
-    unknownLanguage -> fail $ "Unknown language: " <> unpack unknownLanguage
+  directives <- getDirectivesParser language
   notFollowedBy $ space *> chunk "#!"
   pure directives
-  where
-    withNewline p = try (newline *> p) <|> mempty
 
 pDirectives :: Parser Directives
 pDirectives = pShebang *> hspace *> newline *> pLanguageDirectives

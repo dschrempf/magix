@@ -19,7 +19,7 @@ where
 import Data.Text (Text, replace)
 import Data.Text.IO (readFile)
 import Magix.Config (Config (..))
-import Magix.Directives (Directives (..), getLanguageName)
+import Magix.Directives (Directives (..), Language (..), getLanguage)
 import Magix.Languages.Bash.Expression (getBashReplacements)
 import Magix.Languages.Common.Expression (Replacement, getCommonReplacements)
 import Magix.Languages.Haskell.Expression (getHaskellReplacements)
@@ -27,23 +27,23 @@ import Magix.Languages.Python.Expression (getPythonReplacements)
 import Paths_magix (getDataFileName)
 import Prelude hiding (readFile)
 
-getTemplatePath :: String -> FilePath
-getTemplatePath languageName = "src/Magix/Languages/" <> languageName <> "/Template.nix"
+getTemplatePath :: Language -> FilePath
+getTemplatePath language = "src/Magix/Languages/" <> show language <> "/Template.nix"
 
-getTemplate :: String -> IO Text
-getTemplate languageName = getDataFileName (getTemplatePath languageName) >>= readFile
+getTemplate :: Language -> IO Text
+getTemplate language = getDataFileName (getTemplatePath language) >>= readFile
 
 getLanguageReplacements :: Directives -> [Replacement]
-getLanguageReplacements (Bash ds) = getBashReplacements ds
-getLanguageReplacements (Haskell ds) = getHaskellReplacements ds
-getLanguageReplacements (Python ds) = getPythonReplacements ds
+getLanguageReplacements (BashD ds) = getBashReplacements ds
+getLanguageReplacements (HaskellD ds) = getHaskellReplacements ds
+getLanguageReplacements (PythonD ds) = getPythonReplacements ds
 
 getReplacements :: Config -> Directives -> [Replacement]
 getReplacements c ds = getCommonReplacements c ++ getLanguageReplacements ds
 
 getNixExpression :: Config -> Directives -> IO Text
 getNixExpression c ds = do
-  t <- getTemplate $ getLanguageName ds
+  t <- getTemplate $ getLanguage ds
   pure $ foldl' replace' t (getReplacements c ds)
   where
     replace' t (x, y) = replace x y t

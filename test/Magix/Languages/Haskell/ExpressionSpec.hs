@@ -27,7 +27,7 @@ ghcFlags :: [Text]
 ghcFlags = ["fake", "flags"]
 
 haskellDirectives :: Directives
-haskellDirectives = Haskell $ HaskellDirectives haskellPackages ghcFlags
+haskellDirectives = HaskellD $ HaskellDirectives haskellPackages ghcFlags
 
 spec :: Spec
 spec = testExpression haskellDirectives [haskellPackages, ghcFlags]

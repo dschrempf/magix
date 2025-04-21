@@ -24,7 +24,7 @@ packages :: [Text]
 packages = ["fake", "inputs"]
 
 bashDirectives :: Directives
-bashDirectives = Bash $ BashDirectives packages
+bashDirectives = BashD $ BashDirectives packages
 
 spec :: Spec
 spec = testExpression bashDirectives [packages]
