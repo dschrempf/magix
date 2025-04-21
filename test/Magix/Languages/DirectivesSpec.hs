@@ -1,5 +1,5 @@
 -- |
--- Module      :  Magix.Languages.Common.DirectivesSpec
+-- Module      :  Magix.Languages.DirectivesSpec
 -- Description :  Tests for parsing common directives
 -- Copyright   :  2024 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
@@ -9,12 +9,12 @@
 -- Portability :  portable
 --
 -- Creation date: Fri Oct 18 09:34:01 2024.
-module Magix.Languages.Common.DirectivesSpec
+module Magix.Languages.DirectivesSpec
   ( spec,
   )
 where
 
-import Magix.Languages.Common.Directives
+import Magix.Languages.Directives
   ( pDirectiveWithValue,
     pDirectiveWithValues,
     pManyDirectives,

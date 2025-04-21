@@ -1,5 +1,5 @@
 -- |
--- Module      :  Directives
+-- Module      :  Magix.Directives
 -- Description :  Parse directives
 -- Copyright   :  2024 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
@@ -10,9 +10,7 @@
 --
 -- Creation date: Fri Oct 18 09:17:40 2024.
 module Magix.Directives
-  ( Language (..),
-    getLanguageLowercase,
-    Directives (..),
+  ( Directives (..),
     getLanguage,
     pShebang,
     pMagixDirective,
@@ -25,25 +23,20 @@ where
 import Control.Applicative (Alternative (..))
 import Control.Exception (Exception)
 import Data.Bifunctor (Bifunctor (..))
-import Data.Text (Text, pack, toLower)
+import Data.Text (Text)
+import Magix.Language (Language (..), getLanguageNameLowercase)
 import Magix.Languages.Bash.Directives (BashDirectives, pBashDirectives)
-import Magix.Languages.Common.Directives (Parser, pDirectiveWithValue)
+import Magix.Languages.Directives (Parser, pDirectiveWithValue)
 import Magix.Languages.Haskell.Directives (HaskellDirectives, pHaskellDirectives)
 import Magix.Languages.Python.Directives (PythonDirectives, pPythonDirectives)
 import Text.Megaparsec (MonadParsec (notFollowedBy, try), choice, chunk, errorBundlePretty, parse)
 import Text.Megaparsec.Char (hspace, newline, space, string)
 import Prelude hiding (readFile)
 
-data Language = Bash | Haskell | Python
-  deriving (Eq, Show, Ord, Enum, Bounded)
-
-getLanguageLowercase :: Language -> Text
-getLanguageLowercase = toLower . pack . show
-
 pLanguage :: Parser Language
 pLanguage = choice $ map pAnyLanguage [minBound .. maxBound :: Language]
   where
-    pAnyLanguage language = language <$ string (getLanguageLowercase language)
+    pAnyLanguage language = language <$ string (getLanguageNameLowercase language)
 
 getDirectivesParser :: Language -> Parser Directives
 getDirectivesParser l = case l of

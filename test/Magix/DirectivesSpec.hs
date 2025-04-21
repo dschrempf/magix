@@ -18,13 +18,12 @@ import Data.Text (Text, unlines)
 import Data.Text.IO (readFile)
 import Magix.Directives
   ( Directives (..),
-    Language,
-    getLanguageLowercase,
     pDirectives,
     pLanguageDirectives,
     pMagixDirective,
     pShebang,
   )
+import Magix.Language (Language, getLanguageNameLowercase)
 import Magix.Languages.Bash.Directives (BashDirectives (..))
 import Magix.Languages.Haskell.Directives (HaskellDirectives (..))
 import Magix.Languages.Python.Directives (PythonDirectives (..))
@@ -62,7 +61,7 @@ spec = do
   describe "pMagixDirective" $ do
     it "parses Magix directives" $ do
       let testLanguage lang =
-            parseS pMagixDirective ("#!magix " <> getLanguageLowercase lang) lang
+            parseS pMagixDirective ("#!magix " <> getLanguageNameLowercase lang) lang
       sequence_ [testLanguage lang | lang <- [minBound .. maxBound :: Language]]
 
     it "fails on wrong Magix directives" $ do
