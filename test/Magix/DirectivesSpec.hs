@@ -68,19 +68,7 @@ spec = do
       parseF pMagixDirective "#!magic haskell"
       parseF pMagixDirective "#!magic"
 
-  -- TODO: Here, we should only perform language-agnostic tests.
-  -- Language-specific tests should all go into the `./Languages/` directory. I
-  -- think the best would be to get a list of languages and corresponding empty
-  -- directives, and test on this list.
   describe "pLanguageDirectives" $ do
-    it "parses sample language directives" $ do
-      let emptyBashDirectives = BashD $ BashDirectives []
-      parseS pLanguageDirectives "#!magix bash\n#!packages bar" $ BashD (BashDirectives ["bar"])
-      parseS pLanguageDirectives "#!magix bash" emptyBashDirectives
-      parseS pLanguageDirectives "#!magix bash\t" emptyBashDirectives
-      parseS pLanguageDirectives "#!magix \tbash\t" emptyBashDirectives
-      parseS pLanguageDirectives "#!magix \tbash\n\n" emptyBashDirectives
-
     it "fails on wrong language directives" $ do
       parseF pLanguageDirectives "#! bar"
       parseF pLanguageDirectives "#!magix foo\n\n#!packages bar"
@@ -90,6 +78,14 @@ spec = do
       parseF pLanguageDirectives "#!magix bash\n\n#!"
       parseF pLanguageDirectives "#!magix bash\n\n#!foo"
       parseF pLanguageDirectives "#!magix unknown"
+
+    it "parses Bash language directives" $ do
+      let emptyBashDirectives = BashD $ BashDirectives []
+      parseS pLanguageDirectives "#!magix bash\n#!packages bar" $ BashD (BashDirectives ["bar"])
+      parseS pLanguageDirectives "#!magix bash" emptyBashDirectives
+      parseS pLanguageDirectives "#!magix bash\t" emptyBashDirectives
+      parseS pLanguageDirectives "#!magix \tbash\t" emptyBashDirectives
+      parseS pLanguageDirectives "#!magix \tbash\n\n" emptyBashDirectives
 
     it "parses Haskell directives" $ do
       let emptyHaskellDirectives = HaskellD $ HaskellDirectives [] []

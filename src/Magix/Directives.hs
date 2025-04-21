@@ -24,19 +24,20 @@ import Control.Applicative (Alternative (..))
 import Control.Exception (Exception)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Text (Text)
-import Magix.Language (Language (..), getLanguageNameLowercase)
+import Magix.Language (Language (..), pLanguage)
 import Magix.Languages.Bash.Directives (BashDirectives, pBashDirectives)
 import Magix.Languages.Directives (Parser, pDirectiveWithValue)
 import Magix.Languages.Haskell.Directives (HaskellDirectives, pHaskellDirectives)
 import Magix.Languages.Python.Directives (PythonDirectives, pPythonDirectives)
-import Text.Megaparsec (MonadParsec (notFollowedBy, try), choice, chunk, errorBundlePretty, parse)
-import Text.Megaparsec.Char (hspace, newline, space, string)
+import Text.Megaparsec (MonadParsec (notFollowedBy, try), chunk, errorBundlePretty, parse)
+import Text.Megaparsec.Char (hspace, newline, space)
 import Prelude hiding (readFile)
 
-pLanguage :: Parser Language
-pLanguage = choice $ map pAnyLanguage [minBound .. maxBound :: Language]
-  where
-    pAnyLanguage language = language <$ string (getLanguageNameLowercase language)
+data Directives
+  = BashD !BashDirectives
+  | HaskellD !HaskellDirectives
+  | PythonD !PythonDirectives
+  deriving (Eq, Show)
 
 getDirectivesParser :: Language -> Parser Directives
 getDirectivesParser l = case l of
@@ -45,12 +46,6 @@ getDirectivesParser l = case l of
   Python -> PythonD <$> withNewline pPythonDirectives
   where
     withNewline p = try (newline *> p) <|> mempty
-
-data Directives
-  = BashD !BashDirectives
-  | HaskellD !HaskellDirectives
-  | PythonD !PythonDirectives
-  deriving (Eq, Show)
 
 getLanguage :: Directives -> Language
 getLanguage (BashD _) = Bash
