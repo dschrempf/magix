@@ -61,10 +61,11 @@ library
     Magix.Directives
     Magix.Expression
     Magix.Hash
+    Magix.Language
     Magix.Languages.Bash.Directives
     Magix.Languages.Bash.Expression
-    Magix.Languages.Common.Directives
-    Magix.Languages.Common.Expression
+    Magix.Languages.Directives
+    Magix.Languages.Expression
     Magix.Languages.Haskell.Directives
     Magix.Languages.Haskell.Expression
     Magix.Languages.Python.Directives
@@ -117,7 +118,7 @@ test-suite test-magix
     Magix.DirectivesSpec
     Magix.Languages.Bash.DirectivesSpec
     Magix.Languages.Bash.ExpressionSpec
-    Magix.Languages.Common.DirectivesSpec
+    Magix.Languages.DirectivesSpec
     Magix.Languages.Haskell.DirectivesSpec
     Magix.Languages.Haskell.ExpressionSpec
     Magix.Languages.Python.DirectivesSpec

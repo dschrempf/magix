@@ -1,5 +1,5 @@
 -- |
--- Module      :  Magix.Languages.Common.Directives
+-- Module      :  Magix.Languages.Directives
 -- Description :  Common tools for parsing directives
 -- Copyright   :  2024 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
@@ -9,7 +9,7 @@
 -- Portability :  portable
 --
 -- Creation date: Fri Oct 18 09:17:40 2024.
-module Magix.Languages.Common.Directives
+module Magix.Languages.Directives
   ( Parser,
     pDirectiveWithValue,
     pDirectiveWithValues,

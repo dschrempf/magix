@@ -24,7 +24,7 @@ pythonPackages :: [Text]
 pythonPackages = ["fake", "inputs"]
 
 pythonDirectives :: Directives
-pythonDirectives = Python $ PythonDirectives pythonPackages
+pythonDirectives = PythonD $ PythonDirectives pythonPackages
 
 spec :: Spec
 spec = testExpression pythonDirectives [pythonPackages]

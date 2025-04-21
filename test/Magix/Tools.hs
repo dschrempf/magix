@@ -23,7 +23,7 @@ import Data.ByteString (ByteString, pack)
 import Data.Either (isLeft)
 import Data.Text (Text, isInfixOf, unwords)
 import Magix.Config (Config (..))
-import Magix.Directives (Directives, getLanguageName)
+import Magix.Directives (Directives, getLanguage)
 import Magix.Expression (getNixExpression, getReplacements, getTemplate)
 import System.Directory (createDirectory, getTemporaryDirectory)
 import System.FilePath ((</>))
@@ -94,7 +94,7 @@ testExpression directives values = do
   describe (withName "getReplacements") $ do
     it "all replacements should be used as placeholders in the templates" $ do
       config <- getRandomFakeConfig
-      templ <- getTemplate languageName
+      templ <- getTemplate language
       allReplacementsUsed templ (getReplacements config directives) `shouldBe` True
 
   describe (withName "getNixExpression") $ do
@@ -109,5 +109,5 @@ testExpression directives values = do
       expr <- getNixExpression config directives
       sequence_ [expr `shouldSatisfy` containsSpaceSeparatedValues value | value <- values]
   where
-    languageName = getLanguageName directives
-    withName xs = "[" <> languageName <> "] " <> xs
+    language = getLanguage directives
+    withName xs = "[" <> show language <> "] " <> xs
