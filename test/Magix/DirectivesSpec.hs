@@ -27,36 +27,13 @@ import Magix.Languages.Directives (Directives (..))
 import Magix.Languages.Haskell.Directives (HaskellDirectives (..))
 import Magix.Languages.Language (Language (..), getLanguageNameLowercase)
 import Magix.Languages.Python.Directives (PythonDirectives (..))
+import Magix.Languages.Tools (getEmptyDirectives, getMinimalTestcase)
 import Magix.Tools (parseF, parseS)
-import Test.Hspec (Spec, SpecWith, describe, it, shouldBe)
-import Text.Megaparsec (parse)
+import Test.Hspec (Spec, SpecWith, describe, it)
 import Prelude hiding (readFile, unlines)
-
-fnMinimalBash :: FilePath
-fnMinimalBash = "test-scripts/bash/minimal"
-
-readMinimalBash :: IO Text
-readMinimalBash = readFile fnMinimalBash
-
-fnMinimalHaskell :: FilePath
-fnMinimalHaskell = "test-scripts/haskell/minimal"
-
-readMinimalHaskell :: IO Text
-readMinimalHaskell = readFile fnMinimalHaskell
-
-fnMinimalPython :: FilePath
-fnMinimalPython = "test-scripts/python/minimal"
-
-readMinimalPython :: IO Text
-readMinimalPython = readFile fnMinimalPython
 
 languages :: [Language]
 languages = [minBound .. maxBound]
-
-getEmptyDirectives :: Language -> Directives
-getEmptyDirectives Bash = BashD mempty
-getEmptyDirectives Haskell = HaskellD mempty
-getEmptyDirectives Python = PythonD mempty
 
 pEmptyLanguageDirectivesFor :: Language -> SpecWith ()
 pEmptyLanguageDirectivesFor language =
@@ -73,6 +50,13 @@ pEmptyLanguageDirectivesFor language =
     name = getLanguageNameLowercase language
     emptyDirectives = getEmptyDirectives language
     testWith directives = parseS pLanguageDirectives directives emptyDirectives
+
+pMinimalFor :: Language -> SpecWith ()
+pMinimalFor language =
+  it "parses minimal sample scripts" $ do
+    let (fn, res) = getMinimalTestcase language
+    fo <- readFile fn
+    parseS pDirectives fo res
 
 spec :: Spec
 spec = do
@@ -95,9 +79,11 @@ spec = do
       sequence_ [testLanguage lang | lang <- languages]
 
     it "fails on wrong Magix directives" $ do
-      parseF pMagixDirective "#!magic haskell"
+      parseF pMagixDirective "#!magic foo"
       parseF pMagixDirective "#!magic"
 
+  -- TODO: Forcce testing of all languages. If `bash` or any other language is
+  -- used somewhere, instead test for all languages.
   describe "pLanguageDirectives" $ do
     it "fails on wrong language directives" $ do
       parseF pLanguageDirectives "#! bar"
@@ -111,7 +97,7 @@ spec = do
 
     mapM_ pEmptyLanguageDirectivesFor languages
 
-    -- Force testing of all languages.
+    -- TODO: Force testing of all languages.
     it "parses Bash language directives" $ do
       parseS pLanguageDirectives "#!magix bash\n#!packages bar" $
         BashD (BashDirectives ["bar"])
@@ -127,17 +113,7 @@ spec = do
         PythonD (PythonDirectives ["requests"])
 
   describe "pDirectives" $ do
-    -- Force testing of all languages.
-    it "parses minimal sample scripts" $ do
-      minimalBash <- readMinimalBash
-      parse pDirectives fnMinimalBash minimalBash
-        `shouldBe` Right (BashD (BashDirectives ["jq"]))
-      minimalHaskell <- readMinimalHaskell
-      parse pDirectives fnMinimalHaskell minimalHaskell
-        `shouldBe` Right (HaskellD (HaskellDirectives ["bytestring"] ["-threaded"]))
-      minimalPython <- readMinimalPython
-      parse pDirectives fnMinimalPython minimalPython
-        `shouldBe` Right (PythonD (PythonDirectives ["numpy"]))
+    mapM_ pMinimalFor languages
 
     it "parses some edge cases" $ do
       let spaceTest :: Text =
