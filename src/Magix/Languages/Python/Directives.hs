@@ -16,7 +16,7 @@ module Magix.Languages.Python.Directives
 where
 
 import Data.Text (Text)
-import Magix.Languages.Directives
+import Magix.Languages.Common.Directives
   ( Parser,
     pDirectiveWithValues,
     pManyDirectives,

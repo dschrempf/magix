@@ -15,7 +15,7 @@ module Magix.Languages.Python.Expression
 where
 
 import Data.Text (unwords)
-import Magix.Languages.Expression (Replacement)
+import Magix.Languages.Common.Expression (Replacement)
 import Magix.Languages.Python.Directives (PythonDirectives (..))
 import Prelude hiding (unwords)
 
