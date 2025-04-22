@@ -95,6 +95,12 @@ Available options:
   SCRIPT_ARGS              Arguments passed on to the script
 #+end_example
 
+* New languages
+We have designed Magix so that implementing new languages is straightforward. In
+particular:
+- Change and add modules only within the =src/Magix/Languages/*= namespace.
+- Add language-specific tests to =test/Magix/Languages/*=.
+
 * Next steps
 - Property-based testing (e.g., generate arbitrary directives or even scripts).
   When creating arbitrary directives, one could test if the resulting
