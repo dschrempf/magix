@@ -120,7 +120,7 @@ test-suite test-magix
     Magix.DirectivesSpec
     Magix.Languages.Bash.DirectivesSpec
     Magix.Languages.Bash.ExpressionSpec
-    Magix.Languages.DirectivesSpec
+    Magix.Languages.Common.DirectivesSpec
     Magix.Languages.Haskell.DirectivesSpec
     Magix.Languages.Haskell.ExpressionSpec
     Magix.Languages.Python.DirectivesSpec
