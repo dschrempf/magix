@@ -1,5 +1,5 @@
 -- |
--- Module      :  Magix.Languages.Expression
+-- Module      :  Magix.Languages.Common.Expression
 -- Description :  Common definitions related to handling Nix expressions
 -- Copyright   :  2025 Dominik Schrempf
 -- License     :  GPL-3.0-or-later

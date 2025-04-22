@@ -1,6 +1,6 @@
 -- |
 -- Module      :  Magix.Languages.Directives
--- Description :  Language directives supported by Magix
+-- Description :  Pooled language directives
 -- Copyright   :  2025 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
 --

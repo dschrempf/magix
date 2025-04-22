@@ -1,5 +1,5 @@
 -- |
--- Module      :  Magix.Languages.Directives
+-- Module      :  Magix.Languages.Common.Directives
 -- Description :  Common tools for parsing directives
 -- Copyright   :  2024 Dominik Schrempf
 -- License     :  GPL-3.0-or-later

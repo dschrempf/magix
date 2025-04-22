@@ -1,4 +1,5 @@
 * Unreleased
+- Split modules so that implementing new languages becomes easier
 - More tests
 - Language data type
 

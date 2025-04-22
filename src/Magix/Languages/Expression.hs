@@ -1,6 +1,6 @@
 -- |
 -- Module      :  Magix.Languages.Expression
--- Description :  Language expressions supported by Magix
+-- Description :  Pooled language expressions
 -- Copyright   :  2025 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
 --
