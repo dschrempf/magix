@@ -14,7 +14,7 @@ module Magix.Languages.Common.DirectivesSpec
   )
 where
 
-import Magix.Languages.Directives
+import Magix.Languages.Common.Directives
   ( pDirectiveWithValue,
     pDirectiveWithValues,
     pManyDirectives,

@@ -17,15 +17,15 @@ where
 import Data.Text (Text, unlines)
 import Data.Text.IO (readFile)
 import Magix.Directives
-  ( Directives (..),
-    pDirectives,
+  ( pDirectives,
     pLanguageDirectives,
     pMagixDirective,
     pShebang,
   )
-import Magix.Language (Language (..), getLanguageNameLowercase)
 import Magix.Languages.Bash.Directives (BashDirectives (..))
+import Magix.Languages.Directives (Directives (..))
 import Magix.Languages.Haskell.Directives (HaskellDirectives (..))
+import Magix.Languages.Language (Language (..), getLanguageNameLowercase)
 import Magix.Languages.Python.Directives (PythonDirectives (..))
 import Magix.Tools (parseF, parseS)
 import Test.Hspec (Spec, SpecWith, describe, it, shouldBe)

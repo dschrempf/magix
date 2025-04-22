@@ -15,7 +15,7 @@ module Magix.Languages.Python.ExpressionSpec
 where
 
 import Data.Text (Text)
-import Magix.Directives (Directives (..))
+import Magix.Languages.Directives (Directives (..))
 import Magix.Languages.Python.Directives (PythonDirectives (..))
 import Magix.Tools (testExpression)
 import Test.Hspec (Spec)
