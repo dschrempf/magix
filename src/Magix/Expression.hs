@@ -16,6 +16,7 @@ module Magix.Expression
   )
 where
 
+import Data.Foldable qualified as Foldable
 import Data.Text (Text, replace)
 import Data.Text.IO (readFile)
 import Magix.Config (Config (..))
@@ -38,6 +39,6 @@ getReplacements c ds = getCommonReplacements c ++ getLanguageReplacements ds
 getNixExpression :: Config -> Directives -> IO Text
 getNixExpression c ds = do
   t <- getTemplate $ getLanguage ds
-  pure $ foldl' replace' t (getReplacements c ds)
+  pure $ Foldable.foldl' replace' t (getReplacements c ds)
   where
     replace' t (x, y) = replace x y t
