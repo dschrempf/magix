@@ -15,8 +15,8 @@ module Magix.Languages.Bash.ExpressionSpec
 where
 
 import Data.Text (Text)
-import Magix.Directives (Directives (..))
 import Magix.Languages.Bash.Directives (BashDirectives (..))
+import Magix.Languages.Directives (Directives (..))
 import Magix.Tools (testExpression)
 import Test.Hspec (Spec)
 

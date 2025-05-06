@@ -18,12 +18,22 @@ import Control.Exception (onException, throwIO)
 import Data.ByteString (readFile)
 import Data.Text (unpack)
 import Data.Text.Encoding (decodeUtf8')
-import Magix.Build (BuildStatus (..), build, getBuildStatus, withBuildLock)
-import Magix.Config (Config, getConfig)
-import Magix.Directives (Directives, getDirectives)
-import Magix.Expression (getNixExpression)
-import Magix.Options (Options (..), Rebuild (..), Verbosity (..), getOptions)
-import Magix.Run (run)
+import Magix
+  ( BuildStatus (..),
+    Config,
+    Directives,
+    Options (..),
+    Rebuild (..),
+    Verbosity (..),
+    build,
+    getBuildStatus,
+    getConfig,
+    getDirectives,
+    getNixExpression,
+    getOptions,
+    run,
+    withBuildLock,
+  )
 import System.Console.ANSI
   ( Color (Green, Red, White),
     ColorIntensity (Dull),

@@ -1,6 +1,6 @@
 -- |
 -- Module      :  Magix.Languages.Expression
--- Description :  Common definitions related to handling Nix expressions
+-- Description :  Pooled language expressions
 -- Copyright   :  2025 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
 --
@@ -8,20 +8,16 @@
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Creation date: Fri Apr 11 06:36:34 2025.
-module Magix.Languages.Expression
-  ( Replacement,
-    getCommonReplacements,
-  )
-where
+-- Creation date: Mon Apr 22 14:10:46 2025.
+module Magix.Languages.Expression (getLanguageReplacements) where
 
-import Data.Text (Text, pack)
-import Magix.Config (Config (..))
+import Magix.Languages.Bash.Expression (getBashReplacements)
+import Magix.Languages.Common.Expression (Replacement)
+import Magix.Languages.Directives (Directives (BashD, HaskellD, PythonD))
+import Magix.Languages.Haskell.Expression (getHaskellReplacements)
+import Magix.Languages.Python.Expression (getPythonReplacements)
 
-type Replacement = (Text, Text)
-
-getCommonReplacements :: Config -> [Replacement]
-getCommonReplacements c =
-  [ ("__SCRIPT_NAME__", pack $ scriptName c),
-    ("__SCRIPT_SOURCE__", pack $ scriptLinkPath c)
-  ]
+getLanguageReplacements :: Directives -> [Replacement]
+getLanguageReplacements (BashD ds) = getBashReplacements ds
+getLanguageReplacements (HaskellD ds) = getHaskellReplacements ds
+getLanguageReplacements (PythonD ds) = getPythonReplacements ds

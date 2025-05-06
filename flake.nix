@@ -15,8 +15,7 @@
       theseHpkgNames = [
         "magix"
       ];
-      # NOTE: When updating GHC, do not forget to also update the CICD script.
-      thisGhcVersion = "ghc910";
+      thisGhcVersion = "ghc98";
       hOverlay = selfn: supern: {
         haskell = supern.haskell // {
           packageOverrides =

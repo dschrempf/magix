@@ -12,8 +12,11 @@
 module Magix
   ( -- Options.
     Options (..),
+    Rebuild (..),
+    Verbosity (..),
     getOptions,
     -- Configuration.
+    Config,
     getConfig,
     -- Directives.
     getDirectives,
@@ -23,11 +26,18 @@ module Magix
     BuildStatus (..),
     getBuildStatus,
     build,
+    withBuildLock,
+    -- Run.
+    run,
+    -- Languages.
+    Directives,
   )
 where
 
-import Magix.Build (BuildStatus (..), build, getBuildStatus)
-import Magix.Config (getConfig)
+import Magix.Build (BuildStatus (..), build, getBuildStatus, withBuildLock)
+import Magix.Config (Config, getConfig)
 import Magix.Directives (getDirectives)
 import Magix.Expression (getNixExpression)
-import Magix.Options (Options (..), getOptions)
+import Magix.Languages.Directives (Directives)
+import Magix.Options (Options (..), Rebuild (..), Verbosity (..), getOptions)
+import Magix.Run (run)
