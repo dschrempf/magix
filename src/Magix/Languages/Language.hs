@@ -1,5 +1,5 @@
 -- |
--- Module      :  Magix.Language
+-- Module      :  Magix.Languages.Language
 -- Description :  Languages supported by Magix
 -- Copyright   :  2025 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
@@ -9,25 +9,16 @@
 -- Portability :  portable
 --
 -- Creation date: Mon Apr 21 14:10:46 2025.
-module Magix.Language
+module Magix.Languages.Language
   ( Language (..),
     getLanguageNameLowercase,
-    pLanguage,
   )
 where
 
 import Data.Text (Text, pack, toLower)
-import Magix.Languages.Directives (Parser)
-import Text.Megaparsec (choice)
-import Text.Megaparsec.Char (string)
 
 data Language = Bash | Haskell | Python
   deriving (Eq, Show, Ord, Enum, Bounded)
 
 getLanguageNameLowercase :: Language -> Text
 getLanguageNameLowercase = toLower . pack . show
-
-pLanguage :: Parser Language
-pLanguage = choice $ map pAnyLanguage [minBound .. maxBound :: Language]
-  where
-    pAnyLanguage language = language <$ string (getLanguageNameLowercase language)

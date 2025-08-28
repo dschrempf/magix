@@ -10,9 +10,7 @@
 --
 -- Creation date: Fri Oct 18 09:17:40 2024.
 module Magix.Directives
-  ( Directives (..),
-    getLanguage,
-    pShebang,
+  ( pShebang,
     pMagixDirective,
     pLanguageDirectives,
     pDirectives,
@@ -20,40 +18,29 @@ module Magix.Directives
   )
 where
 
-import Control.Applicative (Alternative (..))
 import Control.Exception (Exception)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Text (Text)
-import Magix.Language (Language (..), pLanguage)
-import Magix.Languages.Bash.Directives (BashDirectives, pBashDirectives)
-import Magix.Languages.Directives (Parser, pDirectiveWithValue)
-import Magix.Languages.Haskell.Directives (HaskellDirectives, pHaskellDirectives)
-import Magix.Languages.Python.Directives (PythonDirectives, pPythonDirectives)
-import Text.Megaparsec (MonadParsec (notFollowedBy, try), chunk, errorBundlePretty, parse)
-import Text.Megaparsec.Char (hspace, newline, space)
+import Magix.Languages.Common.Directives (Parser, pDirectiveWithValue)
+import Magix.Languages.Directives (Directives, getDirectivesParser)
+import Magix.Languages.Language (Language (..), getLanguageNameLowercase)
+import Text.Megaparsec
+  ( MonadParsec (notFollowedBy),
+    choice,
+    chunk,
+    errorBundlePretty,
+    parse,
+  )
+import Text.Megaparsec.Char (hspace, newline, space, string)
 import Prelude hiding (readFile)
-
-data Directives
-  = BashD !BashDirectives
-  | HaskellD !HaskellDirectives
-  | PythonD !PythonDirectives
-  deriving (Eq, Show)
-
-getDirectivesParser :: Language -> Parser Directives
-getDirectivesParser l = case l of
-  Bash -> BashD <$> withNewline pBashDirectives
-  Haskell -> HaskellD <$> withNewline pHaskellDirectives
-  Python -> PythonD <$> withNewline pPythonDirectives
-  where
-    withNewline p = try (newline *> p) <|> mempty
-
-getLanguage :: Directives -> Language
-getLanguage (BashD _) = Bash
-getLanguage (HaskellD _) = Haskell
-getLanguage (PythonD _) = Python
 
 pShebang :: Parser Text
 pShebang = pDirectiveWithValue "/usr/bin/env" (chunk "magix")
+
+pLanguage :: Parser Language
+pLanguage = choice $ map pAnyLanguage [minBound .. maxBound :: Language]
+  where
+    pAnyLanguage language = language <$ string (getLanguageNameLowercase language)
 
 pMagixDirective :: Parser Language
 pMagixDirective = pDirectiveWithValue "magix" pLanguage <* hspace

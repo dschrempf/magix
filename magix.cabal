@@ -1,6 +1,6 @@
 cabal-version:      3.4
 name:               magix
-version:            0.4.0.1
+version:            0.5.0.0
 synopsis:
   Build, cache, and run possibly compiled scripts with dependencies using the Nix package manager
 
@@ -61,13 +61,15 @@ library
     Magix.Directives
     Magix.Expression
     Magix.Hash
-    Magix.Language
     Magix.Languages.Bash.Directives
     Magix.Languages.Bash.Expression
+    Magix.Languages.Common.Directives
+    Magix.Languages.Common.Expression
     Magix.Languages.Directives
     Magix.Languages.Expression
     Magix.Languages.Haskell.Directives
     Magix.Languages.Haskell.Expression
+    Magix.Languages.Language
     Magix.Languages.Python.Directives
     Magix.Languages.Python.Expression
     Magix.NixpkgsPath
@@ -118,11 +120,12 @@ test-suite test-magix
     Magix.DirectivesSpec
     Magix.Languages.Bash.DirectivesSpec
     Magix.Languages.Bash.ExpressionSpec
-    Magix.Languages.DirectivesSpec
+    Magix.Languages.Common.DirectivesSpec
     Magix.Languages.Haskell.DirectivesSpec
     Magix.Languages.Haskell.ExpressionSpec
     Magix.Languages.Python.DirectivesSpec
     Magix.Languages.Python.ExpressionSpec
+    Magix.Languages.Tools
     Magix.NixpkgsPathSpec
     Magix.Tools
 

@@ -1,6 +1,10 @@
 * Unreleased
+
+* Version 0.5.0.0
+- Split modules so that implementing new languages becomes easier
 - More tests
 - Language data type
+- Toolchain downgrade to GHC 9.8 (dropped into Nixpkgs, and so is easier to use)
 
 * Version 0.4.0.1
 - Update and improve GitHub workflows (use Nix and Cachix)

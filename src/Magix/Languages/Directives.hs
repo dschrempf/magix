@@ -1,52 +1,47 @@
 -- |
 -- Module      :  Magix.Languages.Directives
--- Description :  Common tools for parsing directives
--- Copyright   :  2024 Dominik Schrempf
+-- Description :  Pooled language directives
+-- Copyright   :  2025 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
 --
 -- Maintainer  :  dominik.schrempf@gmail.com
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Creation date: Fri Oct 18 09:17:40 2024.
+-- Creation date: Mon Apr 22 14:10:46 2025.
+--
+-- Bijective map between `Language` and `Directives`.
 module Magix.Languages.Directives
-  ( Parser,
-    pDirectiveWithValue,
-    pDirectiveWithValues,
-    pManyDirectives,
+  ( Directives (..),
+    getDirectivesParser,
+    getLanguage,
   )
 where
 
 import Control.Applicative (Alternative (..))
-import Data.Text (Text, pack)
-import Data.Void (Void)
-import Text.Megaparsec
-  ( Parsec,
-    chunk,
-    sepEndBy,
-    sepEndBy1,
-  )
-import Text.Megaparsec.Char
-  ( alphaNumChar,
-    hspace,
-    newline,
-    punctuationChar,
-    symbolChar,
-  )
+import Magix.Languages.Bash.Directives (BashDirectives, pBashDirectives)
+import Magix.Languages.Common.Directives (Parser)
+import Magix.Languages.Haskell.Directives (HaskellDirectives, pHaskellDirectives)
+import Magix.Languages.Language (Language (..))
+import Magix.Languages.Python.Directives (PythonDirectives, pPythonDirectives)
+import Text.Megaparsec (try)
+import Text.Megaparsec.Char (newline)
 
-type Parser = Parsec Void Text
+data Directives
+  = BashD !BashDirectives
+  | HaskellD !HaskellDirectives
+  | PythonD !PythonDirectives
+  deriving (Eq, Show)
 
-pDirective :: Text -> Parser Text
-pDirective d = chunk "#!" *> chunk d
+getDirectivesParser :: Language -> Parser Directives
+getDirectivesParser l = case l of
+  Bash -> BashD <$> withNewline pBashDirectives
+  Haskell -> HaskellD <$> withNewline pHaskellDirectives
+  Python -> PythonD <$> withNewline pPythonDirectives
+  where
+    withNewline p = try (newline *> p) <|> mempty
 
-pValue :: Parser Text
-pValue = pack <$> some (alphaNumChar <|> punctuationChar <|> symbolChar)
-
-pDirectiveWithValue :: Text -> Parser a -> Parser a
-pDirectiveWithValue d p = pDirective d *> hspace *> p
-
-pDirectiveWithValues :: Text -> Parser [Text]
-pDirectiveWithValues d = pDirectiveWithValue d (sepEndBy1 pValue hspace)
-
-pManyDirectives :: (Monoid b) => Parser b -> Parser b
-pManyDirectives p = mconcat <$> sepEndBy p (hspace <* newline)
+getLanguage :: Directives -> Language
+getLanguage (BashD _) = Bash
+getLanguage (HaskellD _) = Haskell
+getLanguage (PythonD _) = Python

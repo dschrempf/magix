@@ -16,15 +16,14 @@ module Magix.Expression
   )
 where
 
+import Data.Foldable qualified as Foldable
 import Data.Text (Text, replace)
 import Data.Text.IO (readFile)
 import Magix.Config (Config (..))
-import Magix.Directives (Directives (..), getLanguage)
-import Magix.Language (Language (..))
-import Magix.Languages.Bash.Expression (getBashReplacements)
-import Magix.Languages.Expression (Replacement, getCommonReplacements)
-import Magix.Languages.Haskell.Expression (getHaskellReplacements)
-import Magix.Languages.Python.Expression (getPythonReplacements)
+import Magix.Languages.Common.Expression (Replacement, getCommonReplacements)
+import Magix.Languages.Directives (Directives (..), getLanguage)
+import Magix.Languages.Expression (getLanguageReplacements)
+import Magix.Languages.Language (Language (..))
 import Paths_magix (getDataFileName)
 import Prelude hiding (readFile)
 
@@ -34,17 +33,12 @@ getTemplatePath language = "src/Magix/Languages/" <> show language <> "/Template
 getTemplate :: Language -> IO Text
 getTemplate language = getDataFileName (getTemplatePath language) >>= readFile
 
-getLanguageReplacements :: Directives -> [Replacement]
-getLanguageReplacements (BashD ds) = getBashReplacements ds
-getLanguageReplacements (HaskellD ds) = getHaskellReplacements ds
-getLanguageReplacements (PythonD ds) = getPythonReplacements ds
-
 getReplacements :: Config -> Directives -> [Replacement]
 getReplacements c ds = getCommonReplacements c ++ getLanguageReplacements ds
 
 getNixExpression :: Config -> Directives -> IO Text
 getNixExpression c ds = do
   t <- getTemplate $ getLanguage ds
-  pure $ foldl' replace' t (getReplacements c ds)
+  pure $ Foldable.foldl' replace' t (getReplacements c ds)
   where
     replace' t (x, y) = replace x y t
