@@ -15,7 +15,7 @@
       theseHpkgNames = [
         "magix"
       ];
-      thisGhcVersion = "ghc98";
+      thisGhcVersion = "ghc910";
       hOverlay = selfn: supern: {
         haskell = supern.haskell // {
           packageOverrides =
