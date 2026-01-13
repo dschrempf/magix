@@ -1,3 +1,5 @@
+[[file:Changelog.org][Changelog]].
+
 * Magix
 Build, cache, and run possibly compiled scripts with dependencies using the [[https://nixos.org/][Nix
 package manager]].
