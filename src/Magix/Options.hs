@@ -20,6 +20,7 @@ module Magix.Options
 where
 
 import Control.Applicative (Alternative (..), optional)
+import Data.Version (showVersion)
 import GHC.Generics (Generic)
 import Options.Applicative
   ( Parser,
@@ -28,10 +29,12 @@ import Options.Applicative
     execParser,
     flag,
     fullDesc,
+    header,
     help,
     helper,
     hsubparser,
     info,
+    infoOption,
     long,
     metavar,
     progDesc,
@@ -40,6 +43,7 @@ import Options.Applicative
     strOption,
   )
 import Options.Applicative.Types (ArgPolicy (..))
+import Paths_magix qualified as P
 
 data Verbosity = Info | Debug deriving (Eq, Show)
 
@@ -142,14 +146,23 @@ pScriptArgs =
           <> help "Arguments passed on to the script"
       )
 
-desc :: String
-desc = "Build, cache, and run possibly compiled scripts with dependencies using the Nix package manager"
-
 commandParser :: ParserInfo Command
 commandParser =
   info
-    (helper <*> pCommand)
-    (fullDesc <> progDesc desc)
+    ( infoOption version (long "version" <> help "Show version.")
+        <*> helper
+        <*> pCommand
+    )
+    ( fullDesc
+        <> progDesc desc
+        <> header version
+    )
+  where
+    desc :: String
+    desc = "Build, cache, and run possibly compiled scripts with dependencies using the Nix package manager"
+
+    version :: String
+    version = "Magix version " ++ showVersion P.version
 
 getCommand :: IO Command
 getCommand = execParser (commandParser {infoPolicy = NoIntersperse})
