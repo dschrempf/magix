@@ -20,7 +20,7 @@ where
 
 import Control.Exception (throwIO)
 import Data.ByteString (ByteString)
-import Magix.Hash (getMagixHash)
+import Magix.Hash (MagixHashContents (MagixHashContents), getMagixHash)
 import Magix.NixpkgsPath (getDefaultNixpkgsPath)
 import Magix.Options (Options (..))
 import Magix.Paths (getBuildDir, getBuildExprPath, getLockPath, getResultLinkPath, getScriptLinkPath)
@@ -32,6 +32,7 @@ import Prelude hiding (readFile)
 data Config = Config
   { scriptPath :: !FilePath,
     scriptName :: !String,
+    scriptContents :: !ByteString,
     nixpkgsPath :: !FilePath,
     -- | See `getMagixHash`.
     magixHash :: !ByteString,
@@ -56,7 +57,7 @@ getConfig opts scriptContents = do
   cacheDir <- getCacheDir opts.cachePath
   nixpkgsPath <- maybe getDefaultNixpkgsPathOrFail canonicalizePath opts.nixpkgsPath
   let scriptName = takeBaseName sp
-      magixHash = getMagixHash nixpkgsPath scriptContents
+      magixHash = getMagixHash $ MagixHashContents nixpkgsPath scriptPath scriptContents
       lockPath = getLockPath cacheDir magixHash scriptName
       scriptLinkPath = getScriptLinkPath cacheDir magixHash scriptName
       buildDir = getBuildDir cacheDir magixHash scriptName

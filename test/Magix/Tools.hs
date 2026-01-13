@@ -55,6 +55,7 @@ getRandomFakeConfig = do
     Config
       (tmp </> "fakeScriptPath")
       (tmp </> "fakeScriptName")
+      "fakeScriptContents"
       (tmp </> "fakeNixpkgsPath")
       hsh
       (tmp </> "fakeCacheDir")

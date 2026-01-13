@@ -10,7 +10,8 @@
 --
 -- Creation date: Thu Oct 31 06:47:58 2024.
 module Magix.Hash
-  ( getMagixHash,
+  ( MagixHashContents (..),
+    getMagixHash,
   )
 where
 
@@ -19,19 +20,28 @@ import Data.ByteString (ByteString, toStrict)
 import Data.ByteString.Builder (Builder, charUtf8, intDec, toLazyByteString)
 import Data.Foldable qualified as Foldable
 import Data.Version (Version (versionBranch))
+import GHC.Generics (Generic)
 import Paths_magix (version)
 import Prelude hiding (init)
+
+data MagixHashContents = MagixHashContents
+  { nixpkgsPath :: !FilePath,
+    scriptPath :: !FilePath,
+    scriptContents :: !ByteString
+  }
+  deriving (Eq, Show, Generic)
 
 toByteStringWith :: (a -> Builder) -> [a] -> ByteString
 toByteStringWith f = toStrict . toLazyByteString . mconcat . map f
 
-getMagixHash :: FilePath -> ByteString -> ByteString
-getMagixHash nixpkgsPath scriptContents =
+getMagixHash :: MagixHashContents -> ByteString
+getMagixHash x =
   finalize $
     Foldable.foldl'
       update
       init
-      [ toByteStringWith charUtf8 nixpkgsPath,
-        toByteStringWith intDec $ versionBranch version,
-        scriptContents
+      [ toByteStringWith intDec $ versionBranch version,
+        toByteStringWith charUtf8 x.nixpkgsPath,
+        toByteStringWith charUtf8 x.scriptPath,
+        x.scriptContents
       ]

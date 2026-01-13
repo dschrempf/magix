@@ -2,6 +2,7 @@
 
 * Version 0.6.0.0
 - Add command to clean Magix cache (=clean-magix-cache=)
+- Add script path to Magix hash (fixes https://github.com/dschrempf/magix/issues/15)
 
 * Version 0.5.0.0
 - Split modules so that implementing new languages becomes easier
