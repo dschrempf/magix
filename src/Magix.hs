@@ -11,13 +11,16 @@
 -- Creation date: Fri Oct 18 15:29:10 2024.
 module Magix
   ( -- Options.
+    Command (..),
     Options (..),
+    CleanOptions (..),
     Rebuild (..),
     Verbosity (..),
-    getOptions,
+    getCommand,
     -- Configuration.
     Config,
     getConfig,
+    getCacheDir,
     -- Directives.
     getDirectives,
     -- Expression.
@@ -28,16 +31,23 @@ module Magix
     build,
     withBuildLock,
     -- Run.
-    run,
+    runScript,
     -- Languages.
     Directives,
   )
 where
 
 import Magix.Build (BuildStatus (..), build, getBuildStatus, withBuildLock)
-import Magix.Config (Config, getConfig)
+import Magix.Config (Config, getCacheDir, getConfig)
 import Magix.Directives (getDirectives)
 import Magix.Expression (getNixExpression)
 import Magix.Languages.Directives (Directives)
-import Magix.Options (Options (..), Rebuild (..), Verbosity (..), getOptions)
-import Magix.Run (run)
+import Magix.Options
+  ( CleanOptions (..),
+    Command (..),
+    Options (..),
+    Rebuild (..),
+    Verbosity (..),
+    getCommand,
+  )
+import Magix.Run (runScript)

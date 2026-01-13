@@ -30,11 +30,15 @@ done
 
 # Parallel builds.
 CACHE_PATH_PARALLEL=$(mktemp -u -d -t magix-XXXXXX)
+# We assume `magix' has been built.
+MAGIX=$(cabal list-bin magix)
 echo "Temporary cache path for parallel builds is ${CACHE_PATH_PARALLEL}"
 for l in "${LANGUAGES[@]}"; do
     echo "Running parallel builds for language ${l}"
     dir="test-scripts/${l}"
+    # We use `cabal exec`, because `cabal run` leads to weird linker errors
+    # and core dumps... (Why)?
     parallel -N0 \
-        cabal run magix -- --cache-path "${CACHE_PATH_PARALLEL}" -v "${dir}/minimal" \
+        cabal exec -- "${MAGIX}" --cache-path "${CACHE_PATH_PARALLEL}" -v "${dir}/minimal" \
         ::: {1..10}
 done

@@ -1,5 +1,8 @@
 * Unreleased
 
+* Version 0.6.0.0
+- Add command to clean Magix cache (=clean-magix-cache=)
+
 * Version 0.5.0.0
 - Split modules so that implementing new languages becomes easier
 - More tests

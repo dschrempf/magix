@@ -15,11 +15,14 @@ module Main
 where
 
 import Control.Exception (onException, throwIO)
+import Control.Monad (forM_)
 import Data.ByteString (readFile)
 import Data.Text (unpack)
 import Data.Text.Encoding (decodeUtf8')
 import Magix
   ( BuildStatus (..),
+    CleanOptions (..),
+    Command (..),
     Config,
     Directives,
     Options (..),
@@ -27,11 +30,12 @@ import Magix
     Verbosity (..),
     build,
     getBuildStatus,
+    getCacheDir,
+    getCommand,
     getConfig,
     getDirectives,
     getNixExpression,
-    getOptions,
-    run,
+    runScript,
     withBuildLock,
   )
 import System.Console.ANSI
@@ -42,7 +46,15 @@ import System.Console.ANSI
     SGR (Reset, SetColor, SetConsoleIntensity),
     setSGRCode,
   )
-import System.Exit (exitFailure)
+import System.Directory
+  ( doesDirectoryExist,
+    listDirectory,
+    pathIsSymbolicLink,
+    removeDirectoryRecursive,
+    removeFile,
+  )
+import System.Exit (exitFailure, exitSuccess)
+import System.FilePath ((</>))
 import System.IO (Handle, stderr)
 import System.Log.Formatter (tfLogFormatter)
 import System.Log.Handler (setFormatter)
@@ -109,10 +121,30 @@ newBuild conf dirs = do
   build logger conf expr
   logD "Built Magix Nix expression"
 
-main :: IO ()
-main = do
-  opts <- getOptions
-  logger <- setupLogger (verbosity opts)
+cleanCache :: CleanOptions -> IO ()
+cleanCache opts = do
+  logger <- setupLogger opts.verbosity
+  let logI = logL logger INFO
+  cacheDir <- getCacheDir opts.cachePath
+  logI $ "Cleaning Magix cache: " <> cacheDir
+  removeDirectoryContents cacheDir
+  logI $ "Done"
+  exitSuccess
+  where
+    removeDirectoryContents :: FilePath -> IO ()
+    removeDirectoryContents dir = do
+      contents <- listDirectory dir
+      forM_ contents $ \name -> do
+        let fullPath = dir </> name
+        isDir <- doesDirectoryExist fullPath
+        isLnk <- pathIsSymbolicLink fullPath
+        if isDir && not isLnk
+          then removeDirectoryRecursive fullPath
+          else removeFile fullPath
+
+runMagix :: Options -> IO ()
+runMagix opts = do
+  logger <- setupLogger opts.verbosity
   let logD = logL logger DEBUG
       logI = logL logger INFO
       logE = logL logger ERROR
@@ -153,5 +185,12 @@ main = do
           NeedToBuild -> logI "Need to build" >> newBuild conf dirs
 
   logI "Running script"
-  run opts conf
+  runScript opts conf
   logD "Done"
+
+main :: IO ()
+main = do
+  cmd <- getCommand
+  case cmd of
+    Clean opts -> cleanCache opts
+    Run opts -> runMagix opts

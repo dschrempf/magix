@@ -12,20 +12,25 @@
 module Magix.Options
   ( Verbosity (..),
     Rebuild (..),
+    Command (..),
+    CleanOptions (..),
     Options (..),
-    getOptions,
+    getCommand,
   )
 where
 
 import Control.Applicative (Alternative (..), optional)
+import GHC.Generics (Generic)
 import Options.Applicative
   ( Parser,
     ParserInfo (infoPolicy),
+    command,
     execParser,
     flag,
     fullDesc,
     help,
     helper,
+    hsubparser,
     info,
     long,
     metavar,
@@ -40,6 +45,12 @@ data Verbosity = Info | Debug deriving (Eq, Show)
 
 data Rebuild = ReuseBuildIfAvailable | ForceBuild deriving (Eq, Show)
 
+data CleanOptions = CleanOptions
+  { verbosity :: !Verbosity,
+    cachePath :: !(Maybe FilePath)
+  }
+  deriving (Eq, Show, Generic)
+
 data Options = Options
   { verbosity :: !Verbosity,
     forceBuild :: !Rebuild,
@@ -48,7 +59,25 @@ data Options = Options
     scriptPath :: !FilePath,
     scriptArgs :: ![String]
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+data Command = Clean !CleanOptions | Run !Options
+
+pCommand :: Parser Command
+pCommand = pCleanCommand <|> pRun
+
+-- Careful, the command names shadow possible script names.
+pCleanCommand :: Parser Command
+pCleanCommand =
+  hsubparser $
+    command "clean-magix-cache" $
+      info (Clean <$> pCleanOptions) (progDesc "Clean the Magix cache.")
+
+pCleanOptions :: Parser CleanOptions
+pCleanOptions = CleanOptions <$> pLogLevel <*> pCachePath
+
+pRun :: Parser Command
+pRun = Run <$> pOptions
 
 pOptions :: Parser Options
 pOptions =
@@ -116,11 +145,11 @@ pScriptArgs =
 desc :: String
 desc = "Build, cache, and run possibly compiled scripts with dependencies using the Nix package manager"
 
-optionsParser :: ParserInfo Options
-optionsParser =
+commandParser :: ParserInfo Command
+commandParser =
   info
-    (helper <*> pOptions)
+    (helper <*> pCommand)
     (fullDesc <> progDesc desc)
 
-getOptions :: IO Options
-getOptions = execParser (optionsParser {infoPolicy = NoIntersperse})
+getCommand :: IO Command
+getCommand = execParser (commandParser {infoPolicy = NoIntersperse})

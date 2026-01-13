@@ -107,6 +107,8 @@ executable magix
     , ansi-terminal
     , base           >=4.7 && <5
     , bytestring
+    , directory
+    , filepath
     , hslogger
     , magix
     , text

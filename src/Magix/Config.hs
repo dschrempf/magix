@@ -14,6 +14,7 @@
 module Magix.Config
   ( Config (..),
     getConfig,
+    getCacheDir,
   )
 where
 
@@ -49,21 +50,12 @@ data Config = Config
   }
   deriving (Eq, Show)
 
-getDefaultNixpkgsPathOrFail :: IO FilePath
-getDefaultNixpkgsPathOrFail = do
-  mr <- getDefaultNixpkgsPath
-  case mr of
-    Left err -> do
-      putStrLn "Could not retrieve Nixpkgs path from NIX_PATH"
-      throwIO err
-    Right np -> pure np
-
 getConfig :: Options -> ByteString -> IO Config
 getConfig opts scriptContents = do
-  scriptPath <- canonicalizePath p
-  cacheDir <- maybe (getUserCacheDir "magix") canonicalizePath opts.cachePath
+  scriptPath <- canonicalizePath sp
+  cacheDir <- getCacheDir opts.cachePath
   nixpkgsPath <- maybe getDefaultNixpkgsPathOrFail canonicalizePath opts.nixpkgsPath
-  let scriptName = takeBaseName p
+  let scriptName = takeBaseName sp
       magixHash = getMagixHash nixpkgsPath scriptContents
       lockPath = getLockPath cacheDir magixHash scriptName
       scriptLinkPath = getScriptLinkPath cacheDir magixHash scriptName
@@ -72,4 +64,17 @@ getConfig opts scriptContents = do
       resultLinkPath = getResultLinkPath cacheDir magixHash scriptName
   pure $ Config {..}
   where
-    p = opts.scriptPath
+    sp :: FilePath
+    sp = opts.scriptPath
+
+    getDefaultNixpkgsPathOrFail :: IO FilePath
+    getDefaultNixpkgsPathOrFail = do
+      mr <- getDefaultNixpkgsPath
+      case mr of
+        Left err -> do
+          putStrLn "Could not retrieve Nixpkgs path from NIX_PATH"
+          throwIO err
+        Right np -> pure np
+
+getCacheDir :: Maybe FilePath -> IO FilePath
+getCacheDir mCachePath = maybe (getUserCacheDir "magix") canonicalizePath mCachePath
