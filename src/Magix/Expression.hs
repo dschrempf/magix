@@ -44,7 +44,7 @@ getNixExpression c ds = do
   where
     replace' t (x, y) = replace x y t
 
--- | Generate the universal flake wrapper with the Nixpkgs reference
+-- | Generate the universal Flake wrapper with the Nixpkgs reference
 --   substituted.
 getFlakeWrapper :: Text -> IO Text
 getFlakeWrapper ref = do

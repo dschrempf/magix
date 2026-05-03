@@ -61,6 +61,7 @@ library
     Magix.BuildMode
     Magix.Config
     Magix.Directives
+    Magix.Env
     Magix.Expression
     Magix.Hash
     Magix.Languages.Bash.Directives

@@ -16,7 +16,6 @@ where
 
 import Magix.NixpkgsPath (getDefaultNixpkgsPath, pNixPath, pNixpkgsPath)
 import Magix.Tools (parseS)
-import System.Environment (setEnv)
 import Test.Hspec (Spec, describe, it, shouldBe)
 
 spec :: Spec
@@ -44,6 +43,5 @@ spec = do
 
   describe "pDefaultNixpkgsPath" $ do
     it "works for a sample value" $ do
-      setEnv "NIX_PATH" "nixpkgs=/path/to/nixpkgs"
-      nixpkgsPath <- getDefaultNixpkgsPath
-      nixpkgsPath `shouldBe` Right "/path/to/nixpkgs"
+      getDefaultNixpkgsPath "nixpkgs=/path/to/nixpkgs"
+        `shouldBe` Right "/path/to/nixpkgs"

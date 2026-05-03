@@ -20,6 +20,6 @@ import GHC.Generics (Generic)
 data BuildMode
   = -- | Use a Nixpkgs channel; the store path is included in the cache hash.
     ChannelBuild !FilePath
-  | -- | Use a pinned Nixpkgs flake reference; the reference is included in the cache hash.
+  | -- | Use a pinned Nixpkgs Flake reference; the reference is included in the cache hash.
     FlakeBuild !Text
   deriving (Eq, Show, Generic)

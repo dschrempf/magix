@@ -19,16 +19,27 @@ module Magix.Options
   )
 where
 
+import Control.Applicative ((<|>))
+import Data.Foldable (Foldable (..))
 import Data.Text (pack)
 import Data.Version (showVersion)
 import GHC.Generics (Generic)
 import Magix.BuildMode (BuildMode (..))
+import Magix.Env
+  ( MagixEnv (..),
+    NixEnv (..),
+    getMagixEnv,
+    getNixEnv,
+    magixEnvDesc,
+    nixEnvDesc,
+  )
 import Options.Applicative
   ( Parser,
     ParserInfo (infoPolicy),
     command,
     execParser,
     flag,
+    footerDoc,
     fullDesc,
     header,
     help,
@@ -44,11 +55,10 @@ import Options.Applicative
     short,
     strArgument,
     strOption,
-    (<|>),
   )
+import Options.Applicative.Help (Doc, Pretty (..), fillSep, hardline, indent, vsep)
 import Options.Applicative.Types (ArgPolicy (..))
 import Paths_magix qualified as P
-import System.Environment (lookupEnv)
 import System.Exit (die)
 
 data Verbosity = Info | Debug deriving (Eq, Show)
@@ -65,8 +75,9 @@ data Options = Options
   { verbosity :: !Verbosity,
     forceBuild :: !Rebuild,
     cachePath :: !(Maybe FilePath),
-    -- | Either a Nixpkgs channel path or a flake reference; 'Nothing' means use NIX_PATH.
     buildMode :: !(Maybe BuildMode),
+    magixEnv :: !(MagixEnv (Maybe String)),
+    nixEnv :: !(NixEnv (Maybe String)),
     scriptPath :: !FilePath,
     scriptArgs :: ![String]
   }
@@ -157,7 +168,7 @@ pNixpkgsRef =
       ( metavar "NIXPKGS_REF"
           <> long "nixpkgs-ref"
           <> short 'r'
-          <> help "Nixpkgs flake reference, e.g. 'nixpkgs' or 'github:NixOS/nixpkgs/nixos-unstable'. Also read from MAGIX_NIXPKGS_REF. When set, uses 'nix build' instead of 'nix-build'."
+          <> help "Nixpkgs Flake reference, e.g. 'nixpkgs' or 'github:NixOS/nixpkgs/nixos-unstable'; when set, uses 'nix build' instead of 'nix-build'"
       )
 
 pScriptPath :: Parser FilePath
@@ -173,16 +184,44 @@ pScriptArgs =
           <> help "Arguments passed on to the script"
       )
 
+magixEnvVarsFooter :: Doc
+magixEnvVarsFooter =
+  "Magix-specific environment variables:"
+    <> hardline
+    <> envDescToDoc vars
+  where
+    vars = fmap formatEnvVarDesc magixEnvDesc
+
+nixEnvVarsFooter :: Doc
+nixEnvVarsFooter =
+  "Nix environment variables:"
+    <> hardline
+    <> envDescToDoc vars
+  where
+    vars = fmap formatEnvVarDesc nixEnvDesc
+
+envDescToDoc :: (Foldable t) => t Doc -> Doc
+envDescToDoc = vsep . toList
+
+formatEnvVarDesc :: (String, [String]) -> Doc
+formatEnvVarDesc (varName, varDesc) =
+  indent 2 (pretty varName)
+    <> hardline
+    <> indent 4 (vsep $ map formatLine varDesc)
+  where
+    formatLine = fillSep . map pretty . words
+
 rawCommandParser :: ParserInfo RawCommand
 rawCommandParser =
   info
-    ( infoOption version (long "version" <> help "Show version.")
+    ( infoOption version (long "version" <> help "Show version")
         <*> helper
         <*> pRawCommand
     )
     ( fullDesc
         <> progDesc desc
         <> header version
+        <> footerDoc (Just $ magixEnvVarsFooter <> hardline <> nixEnvVarsFooter)
     )
   where
     desc :: String
@@ -198,8 +237,9 @@ getCommand = do
     RawClean co ->
       pure $ Clean co
     RawRun raw -> do
-      envRef <- lookupEnv "MAGIX_NIXPKGS_REF"
-      let mRef = raw.nixpkgsRef <> envRef
+      magixEnv <- getMagixEnv
+      nixEnv <- getNixEnv
+      let mRef = raw.nixpkgsRef <|> magixEnv.nixpkgsRef
       buildMode <- case (raw.nixpkgsPath, mRef) of
         (Just _, Just _) -> die "--nixpkgs-path and --nixpkgs-ref are mutually exclusive"
         (Just p, Nothing) -> pure $ Just (ChannelBuild p)
@@ -212,6 +252,8 @@ getCommand = do
               forceBuild = raw.forceBuild,
               cachePath = raw.cachePath,
               buildMode = buildMode,
+              magixEnv = magixEnv,
+              nixEnv = nixEnv,
               scriptPath = raw.scriptPath,
               scriptArgs = raw.scriptArgs
             }

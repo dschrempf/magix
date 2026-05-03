@@ -17,6 +17,9 @@ module Magix
     Rebuild (..),
     Verbosity (..),
     getCommand,
+    -- Environment.
+    MagixEnv (..),
+    NixEnv (..),
     -- Configuration.
     BuildMode (..),
     Config,
@@ -41,6 +44,7 @@ where
 import Magix.Build (BuildStatus (..), build, getBuildStatus, withBuildLock)
 import Magix.BuildMode (BuildMode (..))
 import Magix.Config (Config, getCacheDir, getConfig)
+import Magix.Env (MagixEnv (..), NixEnv (..))
 import Magix.Directives (getDirectives)
 import Magix.Expression (getNixExpression)
 import Magix.Languages.Directives (Directives)

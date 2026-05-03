@@ -24,12 +24,14 @@ import Control.Exception (throwIO)
 import Data.ByteString (ByteString)
 import Data.Text (Text)
 import Magix.BuildMode (BuildMode (..))
+import Magix.Env (NixEnv (..), nixEnvDesc)
 import Magix.Hash (MagixHashContents (..), getMagixHash)
 import Magix.NixpkgsPath (getDefaultNixpkgsPath)
 import Magix.Options (Options (..))
 import Magix.Paths (getBuildDir, getLockPath, getResultLinkPath)
 import System.Directory (canonicalizePath)
 import System.Environment.XDG.BaseDir (getUserCacheDir)
+import System.Exit (die)
 import System.FilePath (takeBaseName, (</>))
 import Prelude hiding (readFile)
 
@@ -52,14 +54,13 @@ data Config = Config
   }
   deriving (Eq, Show)
 
-getDefaultNixpkgsPathOrFail :: IO FilePath
-getDefaultNixpkgsPathOrFail = do
-  mr <- getDefaultNixpkgsPath
-  case mr of
-    Left err -> do
-      putStrLn "Could not retrieve Nixpkgs path from NIX_PATH"
-      throwIO err
-    Right np -> pure np
+getDefaultNixpkgsPathOrFail :: Maybe String -> IO FilePath
+getDefaultNixpkgsPathOrFail Nothing = die $ fst nixEnvDesc.nixPath <> " is not set"
+getDefaultNixpkgsPathOrFail (Just np) = case getDefaultNixpkgsPath np of
+  Left err -> do
+    putStrLn $ "Could not retrieve Nixpkgs path from " <> fst nixEnvDesc.nixPath
+    throwIO err
+  Right p -> pure p
 
 -- | Resolve the build mode.
 -- Priority: script's #!nixpkgs directive > CLI/env > NIX_PATH channel
@@ -68,7 +69,7 @@ resolveBuildMode opts mDirectiveRef =
   case (FlakeBuild <$> mDirectiveRef) <|> opts.buildMode of
     Just (ChannelBuild p) -> ChannelBuild <$> canonicalizePath p
     Just (FlakeBuild r) -> pure $ FlakeBuild r
-    Nothing -> ChannelBuild <$> getDefaultNixpkgsPathOrFail
+    Nothing -> ChannelBuild <$> getDefaultNixpkgsPathOrFail opts.nixEnv.nixPath
 
 getConfig :: Options -> ByteString -> Maybe Text -> IO Config
 getConfig opts scriptContents mDirectiveRef = do

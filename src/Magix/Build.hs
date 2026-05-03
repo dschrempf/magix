@@ -72,7 +72,7 @@ build logger cfg expr = do
   writeFile cfg.buildExprPath expr
   (exitCode, stdOut, stdErr) <- case cfg.buildMode of
     ChannelBuild _ -> do
-      logD "Building with nix-build"
+      logD "Building with 'nix-build'"
       readProcessWithExitCode
         "nix-build"
         [ "--out-link",
@@ -81,11 +81,11 @@ build logger cfg expr = do
         ]
         ""
     FlakeBuild ref -> do
-      logD "Writing universal flake wrapper"
+      logD "Writing universal Flake wrapper"
       wrapper <- getFlakeWrapper ref
       let flakePath = cfg.buildDir </> "flake.nix"
       writeFile flakePath wrapper
-      logD "Building with nix build"
+      logD "Building with 'nix build'"
       readProcessWithExitCode
         "nix"
         [ "build",

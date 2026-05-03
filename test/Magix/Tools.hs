@@ -98,28 +98,28 @@ containsSpaceSeparatedValues xs = isInfixOf (unwords xs)
 
 testFlakeExpression :: Text -> Directives -> [[Text]] -> Spec
 testFlakeExpression ref directives values = do
-  describe (withName "getReplacements (flake)") $ do
+  describe (withName "getReplacements (Flake)") $ do
     it "all replacements should be used as placeholders in the language template" $ do
       config <- getRandomFakeFlakeConfig ref
       templ <- getTemplate language
       allReplacementsUsed templ (getReplacements config directives) `shouldBe` True
 
-  describe (withName "getNixExpression (flake)") $ do
+  describe (withName "getNixExpression (Flake)") $ do
     it "all placeholders in language template should be replaced" $ do
       config <- getRandomFakeFlakeConfig ref
       expr <- getNixExpression config directives
       expr `shouldSatisfy` doesNotContainTemplates
 
-  describe (withName "getFlakeWrapper (flake)") $ do
-    it "flake wrapper contains the Nixpkgs reference" $ do
+  describe (withName "getFlakeWrapper (Flake)") $ do
+    it "Flake wrapper contains the Nixpkgs reference" $ do
       wrapper <- getFlakeWrapper ref
       wrapper `shouldSatisfy` isInfixOf ref
 
-    it "flake wrapper contains no unreplaced placeholders" $ do
+    it "Flake wrapper contains no unreplaced placeholders" $ do
       wrapper <- getFlakeWrapper ref
       wrapper `shouldSatisfy` doesNotContainTemplates
 
-  describe (withName "getNixExpression (flake)") $ do
+  describe (withName "getNixExpression (Flake)") $ do
     it "works correctly for some sample data" $ do
       config <- getRandomFakeFlakeConfig ref
       expr <- getNixExpression config directives

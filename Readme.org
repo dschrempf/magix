@@ -107,9 +107,6 @@ particular:
 - Rename =Directives= to =LanguageDirectives= and introduce a new =Directives=
   type that contains common directives and language directives (important for
   Nixpkgs reference).
-- Create an =Env= modules summarizing all environment variables used; for now I
-  believe this is only =MAGIX_NIXPKGS_REF=; the variables should have a common
-  prefix.
 - Property-based testing (e.g., generate arbitrary directives or even scripts).
   When creating arbitrary directives, one could test if the resulting
   Nix expressions are syntactically correct.

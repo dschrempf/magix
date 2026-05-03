@@ -153,7 +153,7 @@ spec = do
               ["#!/usr/bin/env \t magix\t #!magix \t bash \t"]
        in parseF pDirectives directiveNotNewlineTest
 
-    it "parses a nixpkgs directive before language directives" $ do
+    it "parses a Nixpkgs directive before language directives" $ do
       let script :: Text =
             unlines
               [ "#!/usr/bin/env magix",
@@ -173,7 +173,7 @@ spec = do
       parseS pDirectives script (Nothing, BashD (BashDirectives ["jq"]))
 
   describe "pNixpkgsDirective" $ do
-    it "parses a nixpkgs flake ref" $ do
+    it "parses a Nixpkgs Flake ref" $ do
       parseS pNixpkgsDirective "#!nixpkgs github:NixOS/nixpkgs/nixos-unstable" "github:NixOS/nixpkgs/nixos-unstable"
       parseS pNixpkgsDirective "#!nixpkgs nixpkgs" "nixpkgs"
       parseS pNixpkgsDirective "#!nixpkgs github:NixOS/nixpkgs/nixos-24.05" "github:NixOS/nixpkgs/nixos-24.05"
