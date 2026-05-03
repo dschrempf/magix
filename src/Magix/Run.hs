@@ -17,9 +17,9 @@ where
 import Magix.Config (Config (..))
 import Magix.Options (Options (scriptArgs))
 import System.FilePath ((</>))
-import System.Process (callProcess)
+import System.Posix.Process (executeFile)
 
-runScript :: Options -> Config -> IO ()
-runScript opts conf = callProcess executable (scriptArgs opts)
+runScript :: Options -> Config -> IO a
+runScript opts conf = executeFile executable False (scriptArgs opts) Nothing
   where
     executable = resultLinkPath conf </> "bin" </> scriptName conf

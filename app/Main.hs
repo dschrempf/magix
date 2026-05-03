@@ -128,7 +128,7 @@ cleanCache opts = do
   cacheDir <- getCacheDir opts.cachePath
   logI $ "Cleaning Magix cache: " <> cacheDir
   removeDirectoryContents cacheDir
-  logI $ "Done"
+  logI "Done"
   exitSuccess
   where
     removeDirectoryContents :: FilePath -> IO ()
@@ -184,9 +184,8 @@ runMagix opts = do
           HasBeenBuilt -> logI "Script has already been built"
           NeedToBuild -> logI "Need to build" >> newBuild conf dirs
 
-  logI "Running script"
+  logI "Build complete, executing script"
   runScript opts conf
-  logD "Done"
 
 main :: IO ()
 main = do
