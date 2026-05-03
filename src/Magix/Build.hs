@@ -20,18 +20,20 @@ where
 import Control.Monad (unless, when)
 import Data.Text (Text)
 import Data.Text.IO (writeFile)
+import Magix.BuildMode (BuildMode (..))
 import Magix.Config (Config (..))
+import Magix.Expression (getFlakeWrapper)
 import System.Directory
-  ( createDirectoryIfMissing,
+  ( copyFile,
+    createDirectoryIfMissing,
     doesDirectoryExist,
-    doesFileExist,
     removeDirectoryRecursive,
     removeFile,
   )
 import System.Exit (ExitCode (..), exitFailure)
 import System.FileLock (SharedExclusive (..), withFileLock)
+import System.FilePath ((</>))
 import System.Log.Logger (Logger, Priority (..), logL)
-import System.Posix (createSymbolicLink)
 import System.Process (readProcessWithExitCode)
 import Prelude hiding (writeFile)
 
@@ -45,11 +47,6 @@ getBuildStatus c = do
 removeBuild :: Logger -> Config -> IO ()
 removeBuild logger cfg = do
   let logD = logL logger DEBUG
-  -- Link to script.
-  scriptLinkPathExists <- doesFileExist cfg.scriptLinkPath
-  when scriptLinkPathExists $ do
-    logD $ "Removing link to script: " <> cfg.scriptLinkPath
-    removeFile cfg.scriptLinkPath
   -- Build directory.
   buildDirExists <- doesDirectoryExist cfg.buildDir
   when buildDirExists $ do
@@ -67,21 +64,37 @@ build logger cfg expr = do
       logE = logL logger ERROR
   logD "Removing previous builds"
   removeBuild logger cfg
-  logD $ "Creating sanitized link to script: " <> cfg.scriptLinkPath
-  createSymbolicLink cfg.scriptPath cfg.scriptLinkPath
   logD $ "Recreating the build directory: " <> cfg.buildDir
   createDirectoryIfMissing True cfg.buildDir
-  -- Expression.
-  let exprPath = buildExprPath cfg
-  logD $ "Writing Magix Nix expression: " <> exprPath
-  writeFile exprPath expr
-  -- Build.
-  logD "Building with nix-build"
-  (exitCode, stdOut, stdErr) <-
-    readProcessWithExitCode
-      "nix-build"
-      ["--out-link", cfg.resultLinkPath, cfg.buildDir]
-      ""
+  logD $ "Copying script to build directory: " <> cfg.buildDir </> "script"
+  copyFile cfg.scriptPath (cfg.buildDir </> "script")
+  logD $ "Writing Magix Nix expression: " <> cfg.buildExprPath
+  writeFile cfg.buildExprPath expr
+  (exitCode, stdOut, stdErr) <- case cfg.buildMode of
+    ChannelBuild _ -> do
+      logD "Building with nix-build"
+      readProcessWithExitCode
+        "nix-build"
+        [ "--out-link",
+          cfg.resultLinkPath,
+          cfg.buildDir
+        ]
+        ""
+    FlakeBuild ref -> do
+      logD "Writing universal flake wrapper"
+      wrapper <- getFlakeWrapper ref
+      let flakePath = cfg.buildDir </> "flake.nix"
+      writeFile flakePath wrapper
+      logD "Building with nix build"
+      readProcessWithExitCode
+        "nix"
+        [ "build",
+          "--no-write-lock-file",
+          "--out-link",
+          cfg.resultLinkPath,
+          cfg.buildDir
+        ]
+        ""
   let success = exitCode == ExitSuccess
       logFun = if success then logD else logE
   unless (null stdOut) $ logFun $ "Build output ('stdout'):\n" <> stdOut

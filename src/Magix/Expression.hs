@@ -13,6 +13,7 @@ module Magix.Expression
   ( getTemplate,
     getReplacements,
     getNixExpression,
+    getFlakeWrapper,
   )
 where
 
@@ -42,3 +43,10 @@ getNixExpression c ds = do
   pure $ Foldable.foldl' replace' t (getReplacements c ds)
   where
     replace' t (x, y) = replace x y t
+
+-- | Generate the universal flake wrapper with the Nixpkgs reference
+--   substituted.
+getFlakeWrapper :: Text -> IO Text
+getFlakeWrapper ref = do
+  t <- getDataFileName "src/Magix/FlakeTemplate.nix" >>= readFile
+  pure $ replace "__NIXPKGS_REF__" ref t

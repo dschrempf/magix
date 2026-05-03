@@ -12,6 +12,7 @@
 module Magix.Directives
   ( pShebang,
     pMagixDirective,
+    pNixpkgsDirective,
     pLanguageDirectives,
     pDirectives,
     getDirectives,
@@ -21,7 +22,7 @@ where
 import Control.Exception (Exception)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Text (Text)
-import Magix.Languages.Common.Directives (Parser, pDirectiveWithValue)
+import Magix.Languages.Common.Directives (Parser, pDirectiveWithValue, pValue)
 import Magix.Languages.Directives (Directives, getDirectivesParser)
 import Magix.Languages.Language (Language (..), getLanguageNameLowercase)
 import Text.Megaparsec
@@ -29,7 +30,9 @@ import Text.Megaparsec
     choice,
     chunk,
     errorBundlePretty,
+    optional,
     parse,
+    try,
   )
 import Text.Megaparsec.Char (hspace, newline, space, string)
 import Prelude hiding (readFile)
@@ -45,6 +48,9 @@ pLanguage = choice $ map pAnyLanguage [minBound .. maxBound :: Language]
 pMagixDirective :: Parser Language
 pMagixDirective = pDirectiveWithValue "magix" pLanguage <* hspace
 
+pNixpkgsDirective :: Parser Text
+pNixpkgsDirective = pDirectiveWithValue "nixpkgs" pValue <* hspace
+
 pLanguageDirectives :: Parser Directives
 pLanguageDirectives = do
   language <- pMagixDirective
@@ -52,8 +58,14 @@ pLanguageDirectives = do
   notFollowedBy $ space *> chunk "#!"
   pure directives
 
-pDirectives :: Parser Directives
-pDirectives = pShebang *> hspace *> newline *> pLanguageDirectives
+pDirectives :: Parser (Maybe Text, Directives)
+pDirectives = do
+  _ <- pShebang
+  _ <- hspace
+  _ <- newline
+  nixpkgsRef <- optional (try (pNixpkgsDirective <* newline))
+  dirs <- pLanguageDirectives
+  pure (nixpkgsRef, dirs)
 
 data DirectivesParseError = DirectivesParseError
   { _directives :: !Text,
@@ -63,7 +75,7 @@ data DirectivesParseError = DirectivesParseError
 
 instance Exception DirectivesParseError
 
-getDirectives :: FilePath -> Text -> Either DirectivesParseError Directives
+getDirectives :: FilePath -> Text -> Either DirectivesParseError (Maybe Text, Directives)
 getDirectives p x = first fromErr $ parse pDirectives p x
   where
     fromErr e = DirectivesParseError x $ errorBundlePretty e

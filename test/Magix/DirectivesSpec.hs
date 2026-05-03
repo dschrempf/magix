@@ -20,6 +20,7 @@ import Magix.Directives
   ( pDirectives,
     pLanguageDirectives,
     pMagixDirective,
+    pNixpkgsDirective,
     pShebang,
   )
 import Magix.Languages.Bash.Directives (BashDirectives (..))
@@ -56,7 +57,7 @@ pMinimalFor language =
   it "parses minimal sample scripts" $ do
     let (fn, res) = getMinimalTestcase language
     fo <- readFile fn
-    parseS pDirectives fo res
+    parseS pDirectives fo (Nothing, res)
 
 spec :: Spec
 spec = do
@@ -123,7 +124,7 @@ spec = do
                 "#!packages a ",
                 ""
               ]
-      parseS pDirectives spaceTest $ BashD (BashDirectives ["a"])
+      parseS pDirectives spaceTest (Nothing, BashD (BashDirectives ["a"]))
       let newlineTest :: Text =
             unlines
               [ "#!/usr/bin/env magix",
@@ -131,23 +132,52 @@ spec = do
                 "#!packages a",
                 ""
               ]
-      parseS pDirectives newlineTest $ BashD (BashDirectives ["a"])
+      parseS pDirectives newlineTest (Nothing, BashD (BashDirectives ["a"]))
       let newlineEmptyTest :: Text =
             unlines
               [ "#!/usr/bin/env magix",
                 "#!magix bash",
                 ""
               ]
-      parseS pDirectives newlineEmptyTest $ BashD (BashDirectives [])
+      parseS pDirectives newlineEmptyTest (Nothing, BashD (BashDirectives []))
       let emptySpaceTest :: Text =
             unlines
               [ "#!/usr/bin/env \t magix\t ",
                 "#!magix \t bash \t"
               ]
-      parseS pDirectives emptySpaceTest $ BashD (BashDirectives [])
+      parseS pDirectives emptySpaceTest (Nothing, BashD (BashDirectives []))
 
     it "fails on some edge cases" $
       let directiveNotNewlineTest :: Text =
             unlines
               ["#!/usr/bin/env \t magix\t #!magix \t bash \t"]
        in parseF pDirectives directiveNotNewlineTest
+
+    it "parses a nixpkgs directive before language directives" $ do
+      let script :: Text =
+            unlines
+              [ "#!/usr/bin/env magix",
+                "#!nixpkgs github:NixOS/nixpkgs/nixos-unstable",
+                "#!magix bash",
+                "#!packages jq"
+              ]
+      parseS pDirectives script (Just "github:NixOS/nixpkgs/nixos-unstable", BashD (BashDirectives ["jq"]))
+
+    it "returns Nothing for Nixpkgs reference when directive is absent" $ do
+      let script :: Text =
+            unlines
+              [ "#!/usr/bin/env magix",
+                "#!magix bash",
+                "#!packages jq"
+              ]
+      parseS pDirectives script (Nothing, BashD (BashDirectives ["jq"]))
+
+  describe "pNixpkgsDirective" $ do
+    it "parses a nixpkgs flake ref" $ do
+      parseS pNixpkgsDirective "#!nixpkgs github:NixOS/nixpkgs/nixos-unstable" "github:NixOS/nixpkgs/nixos-unstable"
+      parseS pNixpkgsDirective "#!nixpkgs nixpkgs" "nixpkgs"
+      parseS pNixpkgsDirective "#!nixpkgs github:NixOS/nixpkgs/nixos-24.05" "github:NixOS/nixpkgs/nixos-24.05"
+    it "fails on missing value" $
+      parseF pNixpkgsDirective "#!nixpkgs"
+    it "fails on wrong directive name" $
+      parseF pNixpkgsDirective "#!nixpkgspath /nix/store/foo"

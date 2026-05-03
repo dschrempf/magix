@@ -17,7 +17,7 @@ where
 import Data.Text (Text)
 import Magix.Languages.Directives (Directives (..))
 import Magix.Languages.Python.Directives (PythonDirectives (..))
-import Magix.Tools (testExpression)
+import Magix.Tools (testExpression, testFlakeExpression)
 import Test.Hspec (Spec)
 
 pythonPackages :: [Text]
@@ -27,4 +27,6 @@ pythonDirectives :: Directives
 pythonDirectives = PythonD $ PythonDirectives pythonPackages
 
 spec :: Spec
-spec = testExpression pythonDirectives [pythonPackages]
+spec = do
+  testExpression pythonDirectives [pythonPackages]
+  testFlakeExpression "github:NixOS/nixpkgs/nixos-unstable" pythonDirectives [pythonPackages]

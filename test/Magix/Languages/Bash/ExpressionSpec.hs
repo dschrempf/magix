@@ -17,7 +17,7 @@ where
 import Data.Text (Text)
 import Magix.Languages.Bash.Directives (BashDirectives (..))
 import Magix.Languages.Directives (Directives (..))
-import Magix.Tools (testExpression)
+import Magix.Tools (testExpression, testFlakeExpression)
 import Test.Hspec (Spec)
 
 packages :: [Text]
@@ -27,4 +27,6 @@ bashDirectives :: Directives
 bashDirectives = BashD $ BashDirectives packages
 
 spec :: Spec
-spec = testExpression bashDirectives [packages]
+spec = do
+  testExpression bashDirectives [packages]
+  testFlakeExpression "github:NixOS/nixpkgs/nixos-unstable" bashDirectives [packages]

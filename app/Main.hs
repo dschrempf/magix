@@ -150,26 +150,27 @@ runMagix opts = do
       logE = logL logger ERROR
   logD $ "Options are: " <> show opts
 
-  let p = scriptPath opts
-  logD $ "Reading script at path: " <> p
-  bs <-
-    readFile p `onException` do
-      logE $ "Could not read file: " <> p
+  let path = scriptPath opts
+  logD $ "Reading script at path: " <> path
+  scriptBytes <-
+    readFile path `onException` do
+      logE $ "Could not read file: " <> path
       exitFailure
 
-  conf <- getConfig opts bs
-  logD $ "Magix configuration is " <> show conf
-
   logD "Decoding script file"
-  txt <- case decodeUtf8' bs of
+  scriptTxt <- case decodeUtf8' scriptBytes of
     Left e -> logE "Failed decoding script file" >> throwIO e
     Right t -> logD "Successfully decoded script file" >> pure t
+
   logD "Parsing directives"
-  dirs <- case getDirectives p txt of
+  (mNixpkgsRef, dirs) <- case getDirectives path scriptTxt of
     Left e -> logE "Failed parsing directives" >> throwIO e
-    Right ds -> do
-      logD $ "Successfully parsed directives: " <> show ds
-      pure ds
+    Right result -> do
+      logD $ "Successfully parsed directives: " <> show (snd result)
+      pure result
+
+  conf <- getConfig opts scriptBytes mNixpkgsRef
+  logD $ "Magix configuration is " <> show conf
 
   case forceBuild opts of
     ForceBuild -> do

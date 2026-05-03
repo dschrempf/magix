@@ -17,7 +17,7 @@ where
 import Data.Text (Text)
 import Magix.Languages.Directives (Directives (..))
 import Magix.Languages.Haskell.Directives (HaskellDirectives (..))
-import Magix.Tools (testExpression)
+import Magix.Tools (testExpression, testFlakeExpression)
 import Test.Hspec (Spec)
 
 haskellPackages :: [Text]
@@ -30,4 +30,6 @@ haskellDirectives :: Directives
 haskellDirectives = HaskellD $ HaskellDirectives haskellPackages ghcFlags
 
 spec :: Spec
-spec = testExpression haskellDirectives [haskellPackages, ghcFlags]
+spec = do
+  testExpression haskellDirectives [haskellPackages, ghcFlags]
+  testFlakeExpression "github:NixOS/nixpkgs/nixos-unstable" haskellDirectives [haskellPackages, ghcFlags]

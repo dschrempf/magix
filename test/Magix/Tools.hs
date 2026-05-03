@@ -11,9 +11,11 @@
 -- Creation date: Mon Oct 21 21:56:26 2024.
 module Magix.Tools
   ( getRandomFakeConfig,
+    getRandomFakeFlakeConfig,
     parseS,
     parseF,
     testExpression,
+    testFlakeExpression,
   )
 where
 
@@ -22,8 +24,9 @@ import Data.Bifunctor (Bifunctor (first))
 import Data.ByteString (ByteString, pack)
 import Data.Either (isLeft)
 import Data.Text (Text, isInfixOf, unwords)
+import Magix.BuildMode (BuildMode (..))
 import Magix.Config (Config (..))
-import Magix.Expression (getNixExpression, getReplacements, getTemplate)
+import Magix.Expression (getFlakeWrapper, getNixExpression, getReplacements, getTemplate)
 import Magix.Languages.Directives (Directives, getLanguage)
 import System.Directory (createDirectory, getTemporaryDirectory)
 import System.FilePath ((</>))
@@ -55,15 +58,18 @@ getRandomFakeConfig = do
     Config
       (tmp </> "fakeScriptPath")
       (tmp </> "fakeScriptName")
-      "fakeScriptContents"
-      (tmp </> "fakeNixpkgsPath")
+      (ChannelBuild (tmp </> "fakeNixpkgsPath"))
       hsh
       (tmp </> "fakeCacheDir")
       (tmp </> "fakeLockPath")
-      (tmp </> "fakeScriptLinkPath")
       (tmp </> "fakeBuildDir")
       (tmp </> "fakeBuildExprPath")
       (tmp </> "fakeResultDir")
+
+getRandomFakeFlakeConfig :: Text -> IO Config
+getRandomFakeFlakeConfig ref = do
+  c <- getRandomFakeConfig
+  pure c {buildMode = FlakeBuild ref}
 
 parseS ::
   (HasCallStack, Show a, Eq a) =>
@@ -89,6 +95,38 @@ doesNotContainTemplates = not . isInfixOf "__"
 
 containsSpaceSeparatedValues :: [Text] -> Text -> Bool
 containsSpaceSeparatedValues xs = isInfixOf (unwords xs)
+
+testFlakeExpression :: Text -> Directives -> [[Text]] -> Spec
+testFlakeExpression ref directives values = do
+  describe (withName "getReplacements (flake)") $ do
+    it "all replacements should be used as placeholders in the language template" $ do
+      config <- getRandomFakeFlakeConfig ref
+      templ <- getTemplate language
+      allReplacementsUsed templ (getReplacements config directives) `shouldBe` True
+
+  describe (withName "getNixExpression (flake)") $ do
+    it "all placeholders in language template should be replaced" $ do
+      config <- getRandomFakeFlakeConfig ref
+      expr <- getNixExpression config directives
+      expr `shouldSatisfy` doesNotContainTemplates
+
+  describe (withName "getFlakeWrapper (flake)") $ do
+    it "flake wrapper contains the Nixpkgs reference" $ do
+      wrapper <- getFlakeWrapper ref
+      wrapper `shouldSatisfy` isInfixOf ref
+
+    it "flake wrapper contains no unreplaced placeholders" $ do
+      wrapper <- getFlakeWrapper ref
+      wrapper `shouldSatisfy` doesNotContainTemplates
+
+  describe (withName "getNixExpression (flake)") $ do
+    it "works correctly for some sample data" $ do
+      config <- getRandomFakeFlakeConfig ref
+      expr <- getNixExpression config directives
+      sequence_ [expr `shouldSatisfy` containsSpaceSeparatedValues value | value <- values]
+  where
+    language = getLanguage directives
+    withName xs = "[" <> show language <> "] " <> xs
 
 testExpression :: Directives -> [[Text]] -> Spec
 testExpression directives values = do

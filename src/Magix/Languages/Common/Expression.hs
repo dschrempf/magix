@@ -23,5 +23,5 @@ type Replacement = (Text, Text)
 getCommonReplacements :: Config -> [Replacement]
 getCommonReplacements c =
   [ ("__SCRIPT_NAME__", pack $ scriptName c),
-    ("__SCRIPT_SOURCE__", pack $ scriptLinkPath c)
+    ("__SCRIPT_SOURCE__", "./script")
   ]

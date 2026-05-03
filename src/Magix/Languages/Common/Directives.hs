@@ -11,6 +11,7 @@
 -- Creation date: Fri Oct 18 09:17:40 2024.
 module Magix.Languages.Common.Directives
   ( Parser,
+    pValue,
     pDirectiveWithValue,
     pDirectiveWithValues,
     pManyDirectives,
@@ -29,6 +30,7 @@ import Text.Megaparsec
 import Text.Megaparsec.Char
   ( alphaNumChar,
     hspace,
+    hspace1,
     newline,
     punctuationChar,
     symbolChar,
@@ -43,7 +45,7 @@ pValue :: Parser Text
 pValue = pack <$> some (alphaNumChar <|> punctuationChar <|> symbolChar)
 
 pDirectiveWithValue :: Text -> Parser a -> Parser a
-pDirectiveWithValue d p = pDirective d *> hspace *> p
+pDirectiveWithValue d p = pDirective d *> hspace1 *> p
 
 pDirectiveWithValues :: Text -> Parser [Text]
 pDirectiveWithValues d = pDirectiveWithValue d (sepEndBy1 pValue hspace)

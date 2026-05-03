@@ -38,6 +38,13 @@ spec = do
       parseS foobar "#!foo bar baz" "bar"
       parseF (foobar <* eof) "#!foo bar baz"
 
+    it "fails when no space between directive name and value" $ do
+      -- hspace1 requires at least one space; #!foobar has no space after #!foo
+      parseF foobar "#!foobar"
+
+    it "accepts a tab between directive name and value" $
+      parseS (foobar <* eof) "#!foo\tbar" "bar"
+
     it "fails on bogus directives" $ do
       parseF foobar "#!\n"
       parseF foobar "#! "
@@ -50,6 +57,11 @@ spec = do
       parseS foos "#!foo bar" ["bar"]
       parseS foos "#!foo bar baz" ["bar", "baz"]
 
+    -- The inter-value separator is hspace (zero-or-more), which is correct:
+    -- pValue is greedy and stops at whitespace, so values are always space-delimited.
+    it "accepts a tab as inter-value separator" $
+      parseS foos "#!foo bar\tbaz" ["bar", "baz"]
+
     it "fails on directives without a value" $ do
       parseF foos "#!foo "
       parseF foos "#!foo"
@@ -59,6 +71,10 @@ spec = do
       parseF foos "#! foo bar"
       parseF foos "#! foo"
       parseF foos "#! foo bar baz"
+
+    it "fails when no space between directive name and first value" $
+      -- pDirectiveWithValue now uses hspace1
+      parseF foos "#!foobar"
 
     it "fails on bogus directives" $ do
       parseF foos "#!\n"
@@ -73,6 +89,12 @@ spec = do
       parseS pDirectives "#!foo 1 2 3" ["1", "2", "3"]
       parseS pDirectives "#!foo 1 2\n#!foo 4 5" ["1", "2", "4", "5"]
       parseS pDirectives "#!foo 1 2\n#!foo 4 5\n" ["1", "2", "4", "5"]
+
+    -- hspace (zero-or-more) before newline is correct: lines without trailing
+    -- spaces must parse, and lines with trailing spaces must also parse.
+    it "handles trailing spaces before newlines" $ do
+      parseS pDirectives "#!foo 1 2   \n#!foo 4 5" ["1", "2", "4", "5"]
+      parseS pDirectives "#!foo 1 2\t\n#!foo 4 5" ["1", "2", "4", "5"]
 
     it "fails on erroneous directives" $ do
       parseF pDirectives "s"

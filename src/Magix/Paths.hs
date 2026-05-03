@@ -10,8 +10,7 @@
 --
 -- Creation date: Mon Oct 21 17:06:03 2024.
 module Magix.Paths
-  ( getScriptLinkPath,
-    getBuildDir,
+  ( getBuildDir,
     getLockPath,
     getBuildExprPath,
     getResultLinkPath,
@@ -41,9 +40,6 @@ getCommonPrefix cacheDir hash name =
 
 getLockPath :: FilePath -> ByteString -> String -> FilePath
 getLockPath cacheDir hash name = getCommonPrefix cacheDir hash name <> ".lock"
-
-getScriptLinkPath :: FilePath -> ByteString -> String -> FilePath
-getScriptLinkPath cacheDir hash name = getCommonPrefix cacheDir hash name <> "-script"
 
 getBuildDir :: FilePath -> ByteString -> String -> FilePath
 getBuildDir cacheDir hash name = getCommonPrefix cacheDir hash name <> "-build"

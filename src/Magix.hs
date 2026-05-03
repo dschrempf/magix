@@ -18,6 +18,7 @@ module Magix
     Verbosity (..),
     getCommand,
     -- Configuration.
+    BuildMode (..),
     Config,
     getConfig,
     getCacheDir,
@@ -38,6 +39,7 @@ module Magix
 where
 
 import Magix.Build (BuildStatus (..), build, getBuildStatus, withBuildLock)
+import Magix.BuildMode (BuildMode (..))
 import Magix.Config (Config, getCacheDir, getConfig)
 import Magix.Directives (getDirectives)
 import Magix.Expression (getNixExpression)

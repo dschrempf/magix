@@ -1,0 +1,6 @@
+#!/usr/bin/env magix
+#!nixpkgs nixpkgs
+#!magix bash
+#!packages hello
+
+hello

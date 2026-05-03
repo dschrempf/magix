@@ -1,0 +1,5 @@
+#!/usr/bin/env magix
+#!nixpkgs nixpkgs
+#!magix python
+
+print("Hello, World!")
