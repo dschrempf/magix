@@ -13,6 +13,7 @@ module Magix.Expression
   ( getTemplate,
     getReplacements,
     getNixExpression,
+    getFlakeWrapper,
   )
 where
 
@@ -20,25 +21,32 @@ import Data.Foldable qualified as Foldable
 import Data.Text (Text, replace)
 import Data.Text.IO (readFile)
 import Magix.Config (Config (..))
-import Magix.Languages.Common.Expression (Replacement, getCommonReplacements)
-import Magix.Languages.Directives (Directives (..), getLanguage)
-import Magix.Languages.Expression (getLanguageReplacements)
-import Magix.Languages.Language (Language (..))
+import Magix.Language.Common.Expression (Replacement, getCommonReplacements)
+import Magix.Language.Directives (LanguageDirectives, getLanguage)
+import Magix.Language.Expression (getLanguageReplacements)
+import Magix.Language.Language (Language (..))
 import Paths_magix (getDataFileName)
 import Prelude hiding (readFile)
 
 getTemplatePath :: Language -> FilePath
-getTemplatePath language = "src/Magix/Languages/" <> show language <> "/Template.nix"
+getTemplatePath language = "src/Magix/Language/" <> show language <> "/Template.nix"
 
 getTemplate :: Language -> IO Text
 getTemplate language = getDataFileName (getTemplatePath language) >>= readFile
 
-getReplacements :: Config -> Directives -> [Replacement]
+getReplacements :: Config -> LanguageDirectives -> [Replacement]
 getReplacements c ds = getCommonReplacements c ++ getLanguageReplacements ds
 
-getNixExpression :: Config -> Directives -> IO Text
+getNixExpression :: Config -> LanguageDirectives -> IO Text
 getNixExpression c ds = do
   t <- getTemplate $ getLanguage ds
   pure $ Foldable.foldl' replace' t (getReplacements c ds)
   where
     replace' t (x, y) = replace x y t
+
+-- | Generate the universal Flake wrapper with the Nixpkgs reference
+--   substituted.
+getFlakeWrapper :: Text -> IO Text
+getFlakeWrapper ref = do
+  t <- getDataFileName "src/Magix/FlakeTemplate.nix" >>= readFile
+  pure $ replace "__NIXPKGS_REF__" ref t

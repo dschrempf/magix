@@ -10,8 +10,10 @@
 --
 -- Creation date: Fri Oct 18 09:17:40 2024.
 module Magix.Directives
-  ( pShebang,
+  ( Directives (..),
+    pShebang,
     pMagixDirective,
+    pNixpkgsDirective,
     pLanguageDirectives,
     pDirectives,
     getDirectives,
@@ -21,15 +23,17 @@ where
 import Control.Exception (Exception)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Text (Text)
-import Magix.Languages.Common.Directives (Parser, pDirectiveWithValue)
-import Magix.Languages.Directives (Directives, getDirectivesParser)
-import Magix.Languages.Language (Language (..), getLanguageNameLowercase)
+import Magix.Language.Common.Directives (Parser, pDirectiveWithValue, pValue)
+import Magix.Language.Directives (LanguageDirectives, getDirectivesParser)
+import Magix.Language.Language (Language (..), getLanguageNameLowercase)
 import Text.Megaparsec
   ( MonadParsec (notFollowedBy),
     choice,
     chunk,
     errorBundlePretty,
+    optional,
     parse,
+    try,
   )
 import Text.Megaparsec.Char (hspace, newline, space, string)
 import Prelude hiding (readFile)
@@ -45,7 +49,16 @@ pLanguage = choice $ map pAnyLanguage [minBound .. maxBound :: Language]
 pMagixDirective :: Parser Language
 pMagixDirective = pDirectiveWithValue "magix" pLanguage <* hspace
 
-pLanguageDirectives :: Parser Directives
+pNixpkgsDirective :: Parser Text
+pNixpkgsDirective = pDirectiveWithValue "nixpkgs" pValue <* hspace
+
+data Directives = Directives
+  { nixpkgsRef :: !(Maybe Text),
+    language :: !LanguageDirectives
+  }
+  deriving (Eq, Show)
+
+pLanguageDirectives :: Parser LanguageDirectives
 pLanguageDirectives = do
   language <- pMagixDirective
   directives <- getDirectivesParser language
@@ -53,7 +66,17 @@ pLanguageDirectives = do
   pure directives
 
 pDirectives :: Parser Directives
-pDirectives = pShebang *> hspace *> newline *> pLanguageDirectives
+pDirectives = do
+  _ <- pShebang
+  _ <- hspace
+  _ <- newline
+  nixpkgsRef <- optional (try (pNixpkgsDirective <* newline))
+  langDirs <- pLanguageDirectives
+  pure $
+    Directives
+      { nixpkgsRef = nixpkgsRef,
+        language = langDirs
+      }
 
 data DirectivesParseError = DirectivesParseError
   { _directives :: !Text,

@@ -19,13 +19,15 @@ import Crypto.Hash.SHA256 (finalize, init, update)
 import Data.ByteString (ByteString, toStrict)
 import Data.ByteString.Builder (Builder, charUtf8, intDec, toLazyByteString)
 import Data.Foldable qualified as Foldable
+import Data.Text (unpack)
 import Data.Version (Version (versionBranch))
 import GHC.Generics (Generic)
+import Magix.BuildMode (BuildMode (..))
 import Paths_magix (version)
 import Prelude hiding (init)
 
 data MagixHashContents = MagixHashContents
-  { nixpkgsPath :: !FilePath,
+  { buildMode :: !BuildMode,
     scriptPath :: !FilePath,
     scriptContents :: !ByteString
   }
@@ -34,6 +36,10 @@ data MagixHashContents = MagixHashContents
 toByteStringWith :: (a -> Builder) -> [a] -> ByteString
 toByteStringWith f = toStrict . toLazyByteString . mconcat . map f
 
+buildModeBytes :: BuildMode -> ByteString
+buildModeBytes (ChannelBuild path) = toByteStringWith charUtf8 $ "channel:" <> path
+buildModeBytes (FlakeBuild ref) = toByteStringWith charUtf8 $ "flake:" <> unpack ref
+
 getMagixHash :: MagixHashContents -> ByteString
 getMagixHash x =
   finalize $
@@ -41,7 +47,7 @@ getMagixHash x =
       update
       init
       [ toByteStringWith intDec $ versionBranch version,
-        toByteStringWith charUtf8 x.nixpkgsPath,
+        buildModeBytes x.buildMode,
         toByteStringWith charUtf8 x.scriptPath,
         x.scriptContents
       ]

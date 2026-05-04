@@ -17,7 +17,11 @@ module Magix
     Rebuild (..),
     Verbosity (..),
     getCommand,
+    -- Environment.
+    MagixEnv (..),
+    NixEnv (..),
     -- Configuration.
+    BuildMode (..),
     Config,
     getConfig,
     getCacheDir,
@@ -33,15 +37,18 @@ module Magix
     -- Run.
     runScript,
     -- Languages.
-    Directives,
+    Directives (..),
+    LanguageDirectives,
   )
 where
 
 import Magix.Build (BuildStatus (..), build, getBuildStatus, withBuildLock)
+import Magix.BuildMode (BuildMode (..))
 import Magix.Config (Config, getCacheDir, getConfig)
-import Magix.Directives (getDirectives)
+import Magix.Directives (Directives (..), getDirectives)
+import Magix.Env (MagixEnv (..), NixEnv (..))
 import Magix.Expression (getNixExpression)
-import Magix.Languages.Directives (Directives)
+import Magix.Language.Directives (LanguageDirectives)
 import Magix.Options
   ( CleanOptions (..),
     Command (..),

@@ -19,15 +19,27 @@ module Magix.Options
   )
 where
 
-import Control.Applicative (Alternative (..), optional)
+import Control.Applicative ((<|>))
+import Data.Foldable (Foldable (..))
+import Data.Text (pack)
 import Data.Version (showVersion)
 import GHC.Generics (Generic)
+import Magix.BuildMode (BuildMode (..))
+import Magix.Env
+  ( MagixEnv (..),
+    NixEnv (..),
+    getMagixEnv,
+    getNixEnv,
+    magixEnvDesc,
+    nixEnvDesc,
+  )
 import Options.Applicative
   ( Parser,
     ParserInfo (infoPolicy),
     command,
     execParser,
     flag,
+    footerDoc,
     fullDesc,
     header,
     help,
@@ -36,14 +48,18 @@ import Options.Applicative
     info,
     infoOption,
     long,
+    many,
     metavar,
+    optional,
     progDesc,
     short,
     strArgument,
     strOption,
   )
+import Options.Applicative.Help (Doc, Pretty (..), fillSep, hardline, indent, vsep)
 import Options.Applicative.Types (ArgPolicy (..))
 import Paths_magix qualified as P
+import System.Exit (die)
 
 data Verbosity = Info | Debug deriving (Eq, Show)
 
@@ -59,7 +75,9 @@ data Options = Options
   { verbosity :: !Verbosity,
     forceBuild :: !Rebuild,
     cachePath :: !(Maybe FilePath),
-    nixpkgsPath :: !(Maybe FilePath),
+    buildMode :: !(Maybe BuildMode),
+    magixEnv :: !(MagixEnv (Maybe String)),
+    nixEnv :: !(NixEnv (Maybe String)),
     scriptPath :: !FilePath,
     scriptArgs :: ![String]
   }
@@ -67,29 +85,39 @@ data Options = Options
 
 data Command = Clean !CleanOptions | Run !Options
 
-pCommand :: Parser Command
-pCommand = pCleanCommand <|> pRun
+-- | Raw options as parsed from the command line, before validation.
+data RawOptions = RawOptions
+  { verbosity :: !Verbosity,
+    forceBuild :: !Rebuild,
+    cachePath :: !(Maybe FilePath),
+    nixpkgsPath :: !(Maybe FilePath),
+    nixpkgsRef :: !(Maybe String),
+    scriptPath :: !FilePath,
+    scriptArgs :: ![String]
+  }
 
--- Careful, the command names shadow possible script names.
-pCleanCommand :: Parser Command
-pCleanCommand =
-  hsubparser $
-    command "clean-magix-cache" $
-      info (Clean <$> pCleanOptions) (progDesc "Clean the Magix cache.")
+data RawCommand = RawClean !CleanOptions | RawRun !RawOptions
+
+pRawCommand :: Parser RawCommand
+pRawCommand = pCleanCommand <|> pRawRun
+  where
+    pCleanCommand =
+      hsubparser $
+        command "clean-magix-cache" $
+          info (RawClean <$> pCleanOptions) (progDesc "Clean the Magix cache.")
+    pRawRun = RawRun <$> pRawOptions
 
 pCleanOptions :: Parser CleanOptions
 pCleanOptions = CleanOptions <$> pLogLevel <*> pCachePath
 
-pRun :: Parser Command
-pRun = Run <$> pOptions
-
-pOptions :: Parser Options
-pOptions =
-  Options
+pRawOptions :: Parser RawOptions
+pRawOptions =
+  RawOptions
     <$> pLogLevel
     <*> pForceBuild
     <*> pCachePath
     <*> pNixpkgsPath
+    <*> pNixpkgsRef
     <*> pScriptPath
     <*> pScriptArgs
 
@@ -130,7 +158,17 @@ pNixpkgsPath =
       ( metavar "NIXPKGS_PATH"
           <> long "nixpkgs-path"
           <> short 'n'
-          <> help "Path of Nixpkgs repository to use (default: extracted from '$NIX_PATH')"
+          <> help "Path of Nixpkgs channel to use (default: extracted from '$NIX_PATH')"
+      )
+
+pNixpkgsRef :: Parser (Maybe String)
+pNixpkgsRef =
+  optional $
+    strOption
+      ( metavar "NIXPKGS_REF"
+          <> long "nixpkgs-ref"
+          <> short 'r'
+          <> help "Nixpkgs Flake reference, e.g. 'nixpkgs' or 'github:NixOS/nixpkgs/nixos-unstable'; when set, uses 'nix build' instead of 'nix-build'"
       )
 
 pScriptPath :: Parser FilePath
@@ -146,16 +184,44 @@ pScriptArgs =
           <> help "Arguments passed on to the script"
       )
 
-commandParser :: ParserInfo Command
-commandParser =
+magixEnvVarsFooter :: Doc
+magixEnvVarsFooter =
+  "Magix-specific environment variables:"
+    <> hardline
+    <> envDescToDoc vars
+  where
+    vars = fmap formatEnvVarDesc magixEnvDesc
+
+nixEnvVarsFooter :: Doc
+nixEnvVarsFooter =
+  "Nix environment variables:"
+    <> hardline
+    <> envDescToDoc vars
+  where
+    vars = fmap formatEnvVarDesc nixEnvDesc
+
+envDescToDoc :: (Foldable t) => t Doc -> Doc
+envDescToDoc = vsep . toList
+
+formatEnvVarDesc :: (String, [String]) -> Doc
+formatEnvVarDesc (varName, varDesc) =
+  indent 2 (pretty varName)
+    <> hardline
+    <> indent 4 (vsep $ map formatLine varDesc)
+  where
+    formatLine = fillSep . map pretty . words
+
+rawCommandParser :: ParserInfo RawCommand
+rawCommandParser =
   info
-    ( infoOption version (long "version" <> help "Show version.")
+    ( infoOption version (long "version" <> help "Show version")
         <*> helper
-        <*> pCommand
+        <*> pRawCommand
     )
     ( fullDesc
         <> progDesc desc
         <> header version
+        <> footerDoc (Just $ magixEnvVarsFooter <> hardline <> nixEnvVarsFooter)
     )
   where
     desc :: String
@@ -165,4 +231,29 @@ commandParser =
     version = "Magix version " ++ showVersion P.version
 
 getCommand :: IO Command
-getCommand = execParser (commandParser {infoPolicy = NoIntersperse})
+getCommand = do
+  rawCmd <- execParser (rawCommandParser {infoPolicy = NoIntersperse})
+  case rawCmd of
+    RawClean co ->
+      pure $ Clean co
+    RawRun raw -> do
+      magixEnv <- getMagixEnv
+      nixEnv <- getNixEnv
+      let mRef = raw.nixpkgsRef <|> magixEnv.nixpkgsRef
+      buildMode <- case (raw.nixpkgsPath, mRef) of
+        (Just _, Just _) -> die "--nixpkgs-path and --nixpkgs-ref are mutually exclusive"
+        (Just p, Nothing) -> pure $ Just (ChannelBuild p)
+        (Nothing, Just r) -> pure $ Just (FlakeBuild (pack r))
+        (Nothing, Nothing) -> pure Nothing
+      pure $
+        Run $
+          Options
+            { verbosity = raw.verbosity,
+              forceBuild = raw.forceBuild,
+              cachePath = raw.cachePath,
+              buildMode = buildMode,
+              magixEnv = magixEnv,
+              nixEnv = nixEnv,
+              scriptPath = raw.scriptPath,
+              scriptArgs = raw.scriptArgs
+            }

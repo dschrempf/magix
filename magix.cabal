@@ -1,13 +1,13 @@
 cabal-version:      3.4
 name:               magix
-version:            0.6.0.0
+version:            1.0.0.0
 synopsis:
   Build, cache, and run possibly compiled scripts with dependencies using the Nix package manager
 
 description:
   Please see the README at <https://github.com/dschrempf/magix#readme>
 
-category:           Math, Statistics
+category:           Nix, Package Management, Scripting
 homepage:           https://github.com/dschrempf/magix#readme
 bug-reports:        https://github.com/dschrempf/magix/issues
 author:             Dominik Schrempf
@@ -22,9 +22,10 @@ extra-doc-files:
 
 extra-source-files:
 data-files:
-  src/Magix/Languages/Bash/Template.nix
-  src/Magix/Languages/Haskell/Template.nix
-  src/Magix/Languages/Python/Template.nix
+  src/Magix/FlakeTemplate.nix
+  src/Magix/Language/Bash/Template.nix
+  src/Magix/Language/Haskell/Template.nix
+  src/Magix/Language/Python/Template.nix
 
 source-repository head
   location: https://github.com/dschrempf/magix
@@ -37,19 +38,19 @@ common common
     OverloadedStrings
 
 common lib
-  default-language: GHC2021
+  default-language: GHC2024
   ghc-options:      -Wall -Werror -Wunused-packages -Wredundant-constraints
 
 common test
-  default-language: GHC2021
+  default-language: GHC2024
   ghc-options:      -Wall -Werror -Wunused-packages -Wredundant-constraints
 
 common bench
-  default-language: GHC2021
+  default-language: GHC2024
   ghc-options:      -Wall -Werror -Wunused-packages -Wredundant-constraints
 
 common exec
-  default-language: GHC2021
+  default-language: GHC2024
   ghc-options:      -Wall -Werror -Wunused-packages -Wredundant-constraints
 
 library
@@ -57,21 +58,23 @@ library
   exposed-modules:
     Magix
     Magix.Build
+    Magix.BuildMode
     Magix.Config
     Magix.Directives
+    Magix.Env
     Magix.Expression
     Magix.Hash
-    Magix.Languages.Bash.Directives
-    Magix.Languages.Bash.Expression
-    Magix.Languages.Common.Directives
-    Magix.Languages.Common.Expression
-    Magix.Languages.Directives
-    Magix.Languages.Expression
-    Magix.Languages.Haskell.Directives
-    Magix.Languages.Haskell.Expression
-    Magix.Languages.Language
-    Magix.Languages.Python.Directives
-    Magix.Languages.Python.Expression
+    Magix.Language.Bash.Directives
+    Magix.Language.Bash.Expression
+    Magix.Language.Common.Directives
+    Magix.Language.Common.Expression
+    Magix.Language.Directives
+    Magix.Language.Expression
+    Magix.Language.Haskell.Directives
+    Magix.Language.Haskell.Expression
+    Magix.Language.Language
+    Magix.Language.Python.Directives
+    Magix.Language.Python.Expression
     Magix.NixpkgsPath
     Magix.Options
     Magix.Paths
@@ -120,14 +123,14 @@ test-suite test-magix
   other-modules:
     Magix.BuildSpec
     Magix.DirectivesSpec
-    Magix.Languages.Bash.DirectivesSpec
-    Magix.Languages.Bash.ExpressionSpec
-    Magix.Languages.Common.DirectivesSpec
-    Magix.Languages.Haskell.DirectivesSpec
-    Magix.Languages.Haskell.ExpressionSpec
-    Magix.Languages.Python.DirectivesSpec
-    Magix.Languages.Python.ExpressionSpec
-    Magix.Languages.Tools
+    Magix.Language.Bash.DirectivesSpec
+    Magix.Language.Bash.ExpressionSpec
+    Magix.Language.Common.DirectivesSpec
+    Magix.Language.Haskell.DirectivesSpec
+    Magix.Language.Haskell.ExpressionSpec
+    Magix.Language.Python.DirectivesSpec
+    Magix.Language.Python.ExpressionSpec
+    Magix.Language.Tools
     Magix.NixpkgsPathSpec
     Magix.Tools
 

@@ -20,7 +20,6 @@ import Control.Exception (Exception)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Char (isSpace)
 import Data.Void (Void)
-import System.Environment (getEnv)
 import Text.Megaparsec (MonadParsec (takeWhile1P), Parsec, anySingle, chunk, errorBundlePretty, parse, (<|>))
 
 type Parser = Parsec Void String
@@ -42,8 +41,8 @@ data NixpkgsPathError = NixpkgsPathError
 
 instance Exception NixpkgsPathError
 
-getDefaultNixpkgsPath :: IO (Either NixpkgsPathError FilePath)
-getDefaultNixpkgsPath = do
-  nixPath <- getEnv "NIX_PATH"
-  let fromErr e = NixpkgsPathError nixPath $ errorBundlePretty e
-  pure $ first fromErr $ parse pNixPath "" nixPath
+-- | Parse the Nixpkgs path from the value of @NIX_PATH@.
+getDefaultNixpkgsPath :: String -> Either NixpkgsPathError FilePath
+getDefaultNixpkgsPath nixPath = first fromErr $ parse pNixPath "" nixPath
+  where
+    fromErr e = NixpkgsPathError nixPath $ errorBundlePretty e

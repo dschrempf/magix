@@ -16,45 +16,56 @@ cabal build
 echo "Testing"
 cabal test
 
-# Sample scripts.
-CACHE_DIR=$(mktemp -u -d -t magix-XXXXXX)
-echo "Temporary cache directory is ${CACHE_DIR}"
-for l in "${LANGUAGES[@]}"; do
-    echo "Running sample scripts for language ${l}"
-    dir="test-scripts/${l}"
-    cabal run magix -- --cache-path "${CACHE_DIR}" -v "${dir}/empty"
-    cabal run magix -- --cache-path "${CACHE_DIR}" -v "${dir}/minimal"
-    cabal run magix -- --cache-path "${CACHE_DIR}" -v "${dir}/minimal with spaces"
-    cabal run magix -- --cache-path "${CACHE_DIR}" -v "${dir}/args" -h and other args
-done
+check_sample_scripts() {
+    # Sample scripts.
+    CACHE_DIR=$(mktemp -u -d -t magix-XXXXXX)
+    echo "Temporary cache directory is ${CACHE_DIR}"
+    for l in "${LANGUAGES[@]}"; do
+        echo "Running sample scripts for language ${l}"
+        dir="test-scripts/${l}"
+        cabal run magix -- --cache-path "${CACHE_DIR}" -v "${dir}/args" -h and other args
+        cabal run magix -- --cache-path "${CACHE_DIR}" -v "${dir}/empty"
+        cabal run magix -- --cache-path "${CACHE_DIR}" -v "${dir}/hello-flake"
+        cabal run magix -- --cache-path "${CACHE_DIR}" -v "${dir}/minimal"
+        cabal run magix -- --cache-path "${CACHE_DIR}" -v "${dir}/minimal with spaces"
+    done
+}
 
-# Parallel builds.
-CACHE_DIR_PARALLEL=$(mktemp -u -d -t magix-XXXXXX)
-# We assume Magix has been built.
-MAGIX=$(cabal list-bin magix)
-echo "Temporary cache directory for parallel builds is ${CACHE_DIR_PARALLEL}"
-for l in "${LANGUAGES[@]}"; do
-    echo "Running parallel builds for language ${l}"
-    dir="test-scripts/${l}"
-    # We use `cabal exec`, because `cabal run` leads to weird linker errors
-    # and core dumps... (Why)?
-    parallel -N0 \
-        cabal exec -- "${MAGIX}" --cache-path "${CACHE_DIR_PARALLEL}" -v "${dir}/minimal" \
-        ::: {1..10}
-done
+check_parallel_builds() {
+    # Parallel builds.
+    CACHE_DIR_PARALLEL=$(mktemp -u -d -t magix-XXXXXX)
+    # We assume Magix has been built.
+    MAGIX=$(cabal list-bin magix)
+    echo "Temporary cache directory for parallel builds is ${CACHE_DIR_PARALLEL}"
+    for l in "${LANGUAGES[@]}"; do
+        echo "Running parallel builds for language ${l}"
+        dir="test-scripts/${l}"
+        # We use `cabal exec`, because `cabal run` leads to weird linker errors
+        # and core dumps... (Why)?
+        parallel -N0 \
+            cabal exec -- "${MAGIX}" --cache-path "${CACHE_DIR_PARALLEL}" -v "${dir}/minimal" \
+            ::: {1..10}
+    done
+}
 
-# Check if Magix works after script has been moved.
-SCRIPT_DIR=$(mktemp -d -t magix-script-XXXXXX)
-echo "Temporary script path is ${SCRIPT_DIR}"
-SCRIPT_NAME_A="${SCRIPT_DIR}/script_a"
-SCRIPT_NAME_B="${SCRIPT_DIR}/script_b"
+check_script_move() {
+    # Check if Magix works after script has been moved.
+    SCRIPT_DIR=$(mktemp -d -t magix-script-XXXXXX)
+    echo "Temporary script path is ${SCRIPT_DIR}"
+    SCRIPT_NAME_A="${SCRIPT_DIR}/script_a"
+    SCRIPT_NAME_B="${SCRIPT_DIR}/script_b"
 
-cat <<EOF >"${SCRIPT_NAME_A}"
+    cat <<EOF >"${SCRIPT_NAME_A}"
 #!/usr/bin/env magix
 #!magix bash
 echo "Hello from the script!"
 EOF
 
-cabal run magix -- --cache-path "${CACHE_DIR}" -v "${SCRIPT_NAME_A}"
-mv "${SCRIPT_NAME_A}" "${SCRIPT_NAME_B}"
-cabal run magix -- --cache-path "${CACHE_DIR}" -v "${SCRIPT_NAME_B}"
+    cabal run magix -- --cache-path "${CACHE_DIR}" -v "${SCRIPT_NAME_A}"
+    mv "${SCRIPT_NAME_A}" "${SCRIPT_NAME_B}"
+    cabal run magix -- --cache-path "${CACHE_DIR}" -v "${SCRIPT_NAME_B}"
+}
+
+check_sample_scripts
+check_parallel_builds
+check_script_move
