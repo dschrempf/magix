@@ -7,7 +7,7 @@ synopsis:
 description:
   Please see the README at <https://github.com/dschrempf/magix#readme>
 
-category:           Math, Statistics
+category:           Nix, Package Management, Scripting
 homepage:           https://github.com/dschrempf/magix#readme
 bug-reports:        https://github.com/dschrempf/magix/issues
 author:             Dominik Schrempf
