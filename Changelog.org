@@ -1,5 +1,16 @@
 * Unreleased
 
+* Version 1.0.0.0
+** User-facing
+- Support Nix Flakes (=nix build=)
+- Use =execve= to replace process for exact exit-code propagation
+
+** Internal
+- Directives now contain common and language-specific directives
+- Collect environment variables in =Magix.Env= module
+- Rename =Magix.Languages.*= to =Magix.Language.*=
+- Fix package categories
+
 * Version 0.6.0.0
 - Add command to clean Magix cache (=clean-magix-cache=)
 - Add script path to Magix hash (fixes https://github.com/dschrempf/magix/issues/15)
