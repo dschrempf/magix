@@ -15,7 +15,7 @@ module Magix.Languages.Python.ExpressionSpec
 where
 
 import Data.Text (Text)
-import Magix.Languages.Directives (Directives (..))
+import Magix.Languages.Directives (LanguageDirectives (..))
 import Magix.Languages.Python.Directives (PythonDirectives (..))
 import Magix.Tools (testExpression, testFlakeExpression)
 import Test.Hspec (Spec)
@@ -23,10 +23,13 @@ import Test.Hspec (Spec)
 pythonPackages :: [Text]
 pythonPackages = ["fake", "inputs"]
 
-pythonDirectives :: Directives
-pythonDirectives = PythonD $ PythonDirectives pythonPackages
+pythonLanguageDirectives :: LanguageDirectives
+pythonLanguageDirectives = PythonD $ PythonDirectives pythonPackages
 
 spec :: Spec
 spec = do
-  testExpression pythonDirectives [pythonPackages]
-  testFlakeExpression "github:NixOS/nixpkgs/nixos-unstable" pythonDirectives [pythonPackages]
+  testExpression pythonLanguageDirectives [pythonPackages]
+  testFlakeExpression
+    "github:NixOS/nixpkgs/nixos-unstable"
+    pythonLanguageDirectives
+    [pythonPackages]

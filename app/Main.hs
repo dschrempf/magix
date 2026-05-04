@@ -24,7 +24,8 @@ import Magix
     CleanOptions (..),
     Command (..),
     Config,
-    Directives,
+    Directives (..),
+    LanguageDirectives,
     Options (..),
     Rebuild (..),
     Verbosity (..),
@@ -110,7 +111,7 @@ setupLogger v = do
   saveGlobalLogger logger
   pure logger
 
-newBuild :: Config -> Directives -> IO ()
+newBuild :: Config -> LanguageDirectives -> IO ()
 newBuild conf dirs = do
   logger <- getLogger mainLogger
   let logD = logL logger DEBUG
@@ -163,27 +164,29 @@ runMagix opts = do
     Right t -> logD "Successfully decoded script file" >> pure t
 
   logD "Parsing directives"
-  (mNixpkgsRef, dirs) <- case getDirectives path scriptTxt of
+  directives <- case getDirectives path scriptTxt of
     Left e -> logE "Failed parsing directives" >> throwIO e
     Right result -> do
-      logD $ "Successfully parsed directives: " <> show (snd result)
+      logD $ "Successfully parsed directives: " <> show result
       pure result
 
-  conf <- getConfig opts scriptBytes mNixpkgsRef
+  conf <- getConfig opts scriptBytes directives.nixpkgsRef
   logD $ "Magix configuration is " <> show conf
 
   case forceBuild opts of
     ForceBuild -> do
       logI "Forcing build"
-      withBuildLock logger conf $ newBuild conf dirs
+      withBuildLock logger conf $ newBuild conf directives.language
     ReuseBuildIfAvailable -> do
       logD "Reusing build if available"
       logD "Checking build status"
       withBuildLock logger conf $ do
         buildStatus <- getBuildStatus conf
         case buildStatus of
-          HasBeenBuilt -> logI "Script has already been built"
-          NeedToBuild -> logI "Need to build" >> newBuild conf dirs
+          HasBeenBuilt ->
+            logI "Script has already been built"
+          NeedToBuild ->
+            logI "Need to build" >> newBuild conf directives.language
 
   logI "Build complete, executing script"
   runScript opts conf

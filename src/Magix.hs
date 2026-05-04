@@ -37,7 +37,8 @@ module Magix
     -- Run.
     runScript,
     -- Languages.
-    Directives,
+    Directives (..),
+    LanguageDirectives,
   )
 where
 
@@ -45,9 +46,9 @@ import Magix.Build (BuildStatus (..), build, getBuildStatus, withBuildLock)
 import Magix.BuildMode (BuildMode (..))
 import Magix.Config (Config, getCacheDir, getConfig)
 import Magix.Env (MagixEnv (..), NixEnv (..))
-import Magix.Directives (getDirectives)
+import Magix.Directives (Directives (..), getDirectives)
 import Magix.Expression (getNixExpression)
-import Magix.Languages.Directives (Directives)
+import Magix.Languages.Directives (LanguageDirectives)
 import Magix.Options
   ( CleanOptions (..),
     Command (..),

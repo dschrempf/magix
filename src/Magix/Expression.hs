@@ -22,7 +22,7 @@ import Data.Text (Text, replace)
 import Data.Text.IO (readFile)
 import Magix.Config (Config (..))
 import Magix.Languages.Common.Expression (Replacement, getCommonReplacements)
-import Magix.Languages.Directives (Directives (..), getLanguage)
+import Magix.Languages.Directives (LanguageDirectives, getLanguage)
 import Magix.Languages.Expression (getLanguageReplacements)
 import Magix.Languages.Language (Language (..))
 import Paths_magix (getDataFileName)
@@ -34,10 +34,10 @@ getTemplatePath language = "src/Magix/Languages/" <> show language <> "/Template
 getTemplate :: Language -> IO Text
 getTemplate language = getDataFileName (getTemplatePath language) >>= readFile
 
-getReplacements :: Config -> Directives -> [Replacement]
+getReplacements :: Config -> LanguageDirectives -> [Replacement]
 getReplacements c ds = getCommonReplacements c ++ getLanguageReplacements ds
 
-getNixExpression :: Config -> Directives -> IO Text
+getNixExpression :: Config -> LanguageDirectives -> IO Text
 getNixExpression c ds = do
   t <- getTemplate $ getLanguage ds
   pure $ Foldable.foldl' replace' t (getReplacements c ds)

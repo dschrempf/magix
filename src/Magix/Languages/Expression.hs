@@ -13,11 +13,11 @@ module Magix.Languages.Expression (getLanguageReplacements) where
 
 import Magix.Languages.Bash.Expression (getBashReplacements)
 import Magix.Languages.Common.Expression (Replacement)
-import Magix.Languages.Directives (Directives (BashD, HaskellD, PythonD))
+import Magix.Languages.Directives (LanguageDirectives (..))
 import Magix.Languages.Haskell.Expression (getHaskellReplacements)
 import Magix.Languages.Python.Expression (getPythonReplacements)
 
-getLanguageReplacements :: Directives -> [Replacement]
+getLanguageReplacements :: LanguageDirectives -> [Replacement]
 getLanguageReplacements (BashD ds) = getBashReplacements ds
 getLanguageReplacements (HaskellD ds) = getHaskellReplacements ds
 getLanguageReplacements (PythonD ds) = getPythonReplacements ds

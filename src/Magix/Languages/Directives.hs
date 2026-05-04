@@ -10,9 +10,9 @@
 --
 -- Creation date: Mon Apr 22 14:10:46 2025.
 --
--- Bijective map between `Language` and `Directives`.
+-- Bijective map between `Language` and `LanguageDirectives`.
 module Magix.Languages.Directives
-  ( Directives (..),
+  ( LanguageDirectives (..),
     getDirectivesParser,
     getLanguage,
   )
@@ -27,13 +27,13 @@ import Magix.Languages.Python.Directives (PythonDirectives, pPythonDirectives)
 import Text.Megaparsec (try)
 import Text.Megaparsec.Char (newline)
 
-data Directives
+data LanguageDirectives
   = BashD !BashDirectives
   | HaskellD !HaskellDirectives
   | PythonD !PythonDirectives
   deriving (Eq, Show)
 
-getDirectivesParser :: Language -> Parser Directives
+getDirectivesParser :: Language -> Parser LanguageDirectives
 getDirectivesParser l = case l of
   Bash -> BashD <$> withNewline pBashDirectives
   Haskell -> HaskellD <$> withNewline pHaskellDirectives
@@ -41,7 +41,7 @@ getDirectivesParser l = case l of
   where
     withNewline p = try (newline *> p) <|> mempty
 
-getLanguage :: Directives -> Language
+getLanguage :: LanguageDirectives -> Language
 getLanguage (BashD _) = Bash
 getLanguage (HaskellD _) = Haskell
 getLanguage (PythonD _) = Python

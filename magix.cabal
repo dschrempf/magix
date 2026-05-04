@@ -38,19 +38,19 @@ common common
     OverloadedStrings
 
 common lib
-  default-language: GHC2021
+  default-language: GHC2024
   ghc-options:      -Wall -Werror -Wunused-packages -Wredundant-constraints
 
 common test
-  default-language: GHC2021
+  default-language: GHC2024
   ghc-options:      -Wall -Werror -Wunused-packages -Wredundant-constraints
 
 common bench
-  default-language: GHC2021
+  default-language: GHC2024
   ghc-options:      -Wall -Werror -Wunused-packages -Wredundant-constraints
 
 common exec
-  default-language: GHC2021
+  default-language: GHC2024
   ghc-options:      -Wall -Werror -Wunused-packages -Wredundant-constraints
 
 library

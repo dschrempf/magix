@@ -10,24 +10,24 @@
 --
 -- Creation date: Tue Apr 22 15:19:11 2025.
 module Magix.Languages.Tools
-  ( getEmptyDirectives,
+  ( getEmptyLanguageDirectives,
     getMinimalTestcase,
   )
 where
 
-import Magix.Languages.Bash.Directives (BashDirectives (BashDirectives))
-import Magix.Languages.Directives (Directives (..))
-import Magix.Languages.Haskell.Directives (HaskellDirectives (HaskellDirectives))
+import Magix.Languages.Bash.Directives (BashDirectives (..))
+import Magix.Languages.Directives (LanguageDirectives (..))
+import Magix.Languages.Haskell.Directives (HaskellDirectives (..))
 import Magix.Languages.Language (Language (..))
-import Magix.Languages.Python.Directives (PythonDirectives (PythonDirectives))
+import Magix.Languages.Python.Directives (PythonDirectives (..))
 import Prelude hiding (readFile)
 
-getEmptyDirectives :: Language -> Directives
-getEmptyDirectives Bash = BashD mempty
-getEmptyDirectives Haskell = HaskellD mempty
-getEmptyDirectives Python = PythonD mempty
+getEmptyLanguageDirectives :: Language -> LanguageDirectives
+getEmptyLanguageDirectives Bash = BashD mempty
+getEmptyLanguageDirectives Haskell = HaskellD mempty
+getEmptyLanguageDirectives Python = PythonD mempty
 
-getMinimalTestcase :: Language -> (FilePath, Directives)
+getMinimalTestcase :: Language -> (FilePath, LanguageDirectives)
 getMinimalTestcase Bash =
   ( "test-scripts/bash/minimal",
     BashD (BashDirectives ["jq"])

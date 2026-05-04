@@ -16,17 +16,20 @@ where
 
 import Data.Text (Text)
 import Magix.Languages.Bash.Directives (BashDirectives (..))
-import Magix.Languages.Directives (Directives (..))
+import Magix.Languages.Directives (LanguageDirectives (..))
 import Magix.Tools (testExpression, testFlakeExpression)
 import Test.Hspec (Spec)
 
 packages :: [Text]
 packages = ["fake", "inputs"]
 
-bashDirectives :: Directives
-bashDirectives = BashD $ BashDirectives packages
+bashLanguageDirectives :: LanguageDirectives
+bashLanguageDirectives = BashD $ BashDirectives packages
 
 spec :: Spec
 spec = do
-  testExpression bashDirectives [packages]
-  testFlakeExpression "github:NixOS/nixpkgs/nixos-unstable" bashDirectives [packages]
+  testExpression bashLanguageDirectives [packages]
+  testFlakeExpression
+    "github:NixOS/nixpkgs/nixos-unstable"
+    bashLanguageDirectives
+    [packages]

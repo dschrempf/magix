@@ -16,19 +16,13 @@ where
 
 import Data.Text (Text, unlines)
 import Data.Text.IO (readFile)
-import Magix.Directives
-  ( pDirectives,
-    pLanguageDirectives,
-    pMagixDirective,
-    pNixpkgsDirective,
-    pShebang,
-  )
+import Magix.Directives (Directives (..), pDirectives, pLanguageDirectives, pMagixDirective, pNixpkgsDirective, pShebang)
 import Magix.Languages.Bash.Directives (BashDirectives (..))
-import Magix.Languages.Directives (Directives (..))
+import Magix.Languages.Directives (LanguageDirectives (..))
 import Magix.Languages.Haskell.Directives (HaskellDirectives (..))
 import Magix.Languages.Language (Language (..), getLanguageNameLowercase)
 import Magix.Languages.Python.Directives (PythonDirectives (..))
-import Magix.Languages.Tools (getEmptyDirectives, getMinimalTestcase)
+import Magix.Languages.Tools (getEmptyLanguageDirectives, getMinimalTestcase)
 import Magix.Tools (parseF, parseS)
 import Test.Hspec (Spec, SpecWith, describe, it)
 import Prelude hiding (readFile, unlines)
@@ -49,15 +43,22 @@ pEmptyLanguageDirectivesFor language =
   where
     description = "parses basic " <> show language <> " language directives"
     name = getLanguageNameLowercase language
-    emptyDirectives = getEmptyDirectives language
-    testWith directives = parseS pLanguageDirectives directives emptyDirectives
+    emptyLanguageDirectives = getEmptyLanguageDirectives language
+    testWith directives = parseS pLanguageDirectives directives emptyLanguageDirectives
 
 pMinimalFor :: Language -> SpecWith ()
 pMinimalFor language =
   it "parses minimal sample scripts" $ do
     let (fn, res) = getMinimalTestcase language
     fo <- readFile fn
-    parseS pDirectives fo (Nothing, res)
+    parseS
+      pDirectives
+      fo
+      ( Directives
+          { nixpkgsRef = Nothing,
+            language = res
+          }
+      )
 
 spec :: Spec
 spec = do
@@ -124,7 +125,14 @@ spec = do
                 "#!packages a ",
                 ""
               ]
-      parseS pDirectives spaceTest (Nothing, BashD (BashDirectives ["a"]))
+      parseS
+        pDirectives
+        spaceTest
+        ( Directives
+            { nixpkgsRef = Nothing,
+              language = BashD (BashDirectives ["a"])
+            }
+        )
       let newlineTest :: Text =
             unlines
               [ "#!/usr/bin/env magix",
@@ -132,20 +140,41 @@ spec = do
                 "#!packages a",
                 ""
               ]
-      parseS pDirectives newlineTest (Nothing, BashD (BashDirectives ["a"]))
+      parseS
+        pDirectives
+        newlineTest
+        ( Directives
+            { nixpkgsRef = Nothing,
+              language = BashD (BashDirectives ["a"])
+            }
+        )
       let newlineEmptyTest :: Text =
             unlines
               [ "#!/usr/bin/env magix",
                 "#!magix bash",
                 ""
               ]
-      parseS pDirectives newlineEmptyTest (Nothing, BashD (BashDirectives []))
+      parseS
+        pDirectives
+        newlineEmptyTest
+        ( Directives
+            { nixpkgsRef = Nothing,
+              language = BashD (BashDirectives [])
+            }
+        )
       let emptySpaceTest :: Text =
             unlines
               [ "#!/usr/bin/env \t magix\t ",
                 "#!magix \t bash \t"
               ]
-      parseS pDirectives emptySpaceTest (Nothing, BashD (BashDirectives []))
+      parseS
+        pDirectives
+        emptySpaceTest
+        ( Directives
+            { nixpkgsRef = Nothing,
+              language = BashD (BashDirectives [])
+            }
+        )
 
     it "fails on some edge cases" $
       let directiveNotNewlineTest :: Text =
@@ -161,7 +190,14 @@ spec = do
                 "#!magix bash",
                 "#!packages jq"
               ]
-      parseS pDirectives script (Just "github:NixOS/nixpkgs/nixos-unstable", BashD (BashDirectives ["jq"]))
+      parseS
+        pDirectives
+        script
+        ( Directives
+            { nixpkgsRef = Just "github:NixOS/nixpkgs/nixos-unstable",
+              language = BashD (BashDirectives ["jq"])
+            }
+        )
 
     it "returns Nothing for Nixpkgs reference when directive is absent" $ do
       let script :: Text =
@@ -170,7 +206,14 @@ spec = do
                 "#!magix bash",
                 "#!packages jq"
               ]
-      parseS pDirectives script (Nothing, BashD (BashDirectives ["jq"]))
+      parseS
+        pDirectives
+        script
+        ( Directives
+            { nixpkgsRef = Nothing,
+              language = BashD (BashDirectives ["jq"])
+            }
+        )
 
   describe "pNixpkgsDirective" $ do
     it "parses a Nixpkgs Flake ref" $ do

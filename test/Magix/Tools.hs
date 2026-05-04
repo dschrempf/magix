@@ -27,7 +27,7 @@ import Data.Text (Text, isInfixOf, unwords)
 import Magix.BuildMode (BuildMode (..))
 import Magix.Config (Config (..))
 import Magix.Expression (getFlakeWrapper, getNixExpression, getReplacements, getTemplate)
-import Magix.Languages.Directives (Directives, getLanguage)
+import Magix.Languages.Directives (LanguageDirectives, getLanguage)
 import System.Directory (createDirectory, getTemporaryDirectory)
 import System.FilePath ((</>))
 import System.Random.Stateful (randomIO, randomRIO)
@@ -96,7 +96,7 @@ doesNotContainTemplates = not . isInfixOf "__"
 containsSpaceSeparatedValues :: [Text] -> Text -> Bool
 containsSpaceSeparatedValues xs = isInfixOf (unwords xs)
 
-testFlakeExpression :: Text -> Directives -> [[Text]] -> Spec
+testFlakeExpression :: Text -> LanguageDirectives -> [[Text]] -> Spec
 testFlakeExpression ref directives values = do
   describe (withName "getReplacements (Flake)") $ do
     it "all replacements should be used as placeholders in the language template" $ do
@@ -128,7 +128,7 @@ testFlakeExpression ref directives values = do
     language = getLanguage directives
     withName xs = "[" <> show language <> "] " <> xs
 
-testExpression :: Directives -> [[Text]] -> Spec
+testExpression :: LanguageDirectives -> [[Text]] -> Spec
 testExpression directives values = do
   describe (withName "getReplacements") $ do
     it "all replacements should be used as placeholders in the templates" $ do

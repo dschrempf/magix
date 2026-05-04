@@ -15,7 +15,7 @@ module Magix.Languages.Haskell.ExpressionSpec
 where
 
 import Data.Text (Text)
-import Magix.Languages.Directives (Directives (..))
+import Magix.Languages.Directives (LanguageDirectives (..))
 import Magix.Languages.Haskell.Directives (HaskellDirectives (..))
 import Magix.Tools (testExpression, testFlakeExpression)
 import Test.Hspec (Spec)
@@ -26,10 +26,13 @@ haskellPackages = ["fake", "packages"]
 ghcFlags :: [Text]
 ghcFlags = ["fake", "flags"]
 
-haskellDirectives :: Directives
-haskellDirectives = HaskellD $ HaskellDirectives haskellPackages ghcFlags
+haskellLanguageDirectives :: LanguageDirectives
+haskellLanguageDirectives = HaskellD $ HaskellDirectives haskellPackages ghcFlags
 
 spec :: Spec
 spec = do
-  testExpression haskellDirectives [haskellPackages, ghcFlags]
-  testFlakeExpression "github:NixOS/nixpkgs/nixos-unstable" haskellDirectives [haskellPackages, ghcFlags]
+  testExpression haskellLanguageDirectives [haskellPackages, ghcFlags]
+  testFlakeExpression
+    "github:NixOS/nixpkgs/nixos-unstable"
+    haskellLanguageDirectives
+    [haskellPackages, ghcFlags]
