@@ -1,5 +1,5 @@
 -- |
--- Module      :  Magix.Languages.Haskell.DirectivesSpec
+-- Module      :  Magix.Language.Haskell.DirectivesSpec
 -- Description :  Tests for parsing Haskell directives
 -- Copyright   :  2024 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
@@ -9,13 +9,13 @@
 -- Portability :  portable
 --
 -- Creation date: Fri Oct 18 09:34:01 2024.
-module Magix.Languages.Haskell.DirectivesSpec
+module Magix.Language.Haskell.DirectivesSpec
   ( spec,
   )
 where
 
 import Data.Text (Text, unlines)
-import Magix.Languages.Haskell.Directives (HaskellDirectives (..), pHaskellDirectives)
+import Magix.Language.Haskell.Directives (HaskellDirectives (..), pHaskellDirectives)
 import Magix.Tools (parseS)
 import Test.Hspec (Spec, describe, it)
 import Prelude hiding (unlines)

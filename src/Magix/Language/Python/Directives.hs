@@ -1,5 +1,5 @@
 -- |
--- Module      :  Magix.Languages.Python.Directives
+-- Module      :  Magix.Language.Python.Directives
 -- Description :  Python directives for Magix
 -- Copyright   :  2024 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
@@ -9,14 +9,14 @@
 -- Portability :  portable
 --
 -- Creation date: Fri Oct 18 09:17:40 2024.
-module Magix.Languages.Python.Directives
+module Magix.Language.Python.Directives
   ( PythonDirectives (..),
     pPythonDirectives,
   )
 where
 
 import Data.Text (Text)
-import Magix.Languages.Common.Directives
+import Magix.Language.Common.Directives
   ( Parser,
     pDirectiveWithValues,
     pManyDirectives,

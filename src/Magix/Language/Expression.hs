@@ -1,5 +1,5 @@
 -- |
--- Module      :  Magix.Languages.Expression
+-- Module      :  Magix.Language.Expression
 -- Description :  Pooled language expressions
 -- Copyright   :  2025 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
@@ -9,13 +9,13 @@
 -- Portability :  portable
 --
 -- Creation date: Mon Apr 22 14:10:46 2025.
-module Magix.Languages.Expression (getLanguageReplacements) where
+module Magix.Language.Expression (getLanguageReplacements) where
 
-import Magix.Languages.Bash.Expression (getBashReplacements)
-import Magix.Languages.Common.Expression (Replacement)
-import Magix.Languages.Directives (LanguageDirectives (..))
-import Magix.Languages.Haskell.Expression (getHaskellReplacements)
-import Magix.Languages.Python.Expression (getPythonReplacements)
+import Magix.Language.Bash.Expression (getBashReplacements)
+import Magix.Language.Common.Expression (Replacement)
+import Magix.Language.Directives (LanguageDirectives (..))
+import Magix.Language.Haskell.Expression (getHaskellReplacements)
+import Magix.Language.Python.Expression (getPythonReplacements)
 
 getLanguageReplacements :: LanguageDirectives -> [Replacement]
 getLanguageReplacements (BashD ds) = getBashReplacements ds

@@ -1,5 +1,5 @@
 -- |
--- Module      :  Magix.Languages.Directives
+-- Module      :  Magix.Language.Directives
 -- Description :  Pooled language directives
 -- Copyright   :  2025 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
@@ -11,7 +11,7 @@
 -- Creation date: Mon Apr 22 14:10:46 2025.
 --
 -- Bijective map between `Language` and `LanguageDirectives`.
-module Magix.Languages.Directives
+module Magix.Language.Directives
   ( LanguageDirectives (..),
     getDirectivesParser,
     getLanguage,
@@ -19,11 +19,11 @@ module Magix.Languages.Directives
 where
 
 import Control.Applicative (Alternative (..))
-import Magix.Languages.Bash.Directives (BashDirectives, pBashDirectives)
-import Magix.Languages.Common.Directives (Parser)
-import Magix.Languages.Haskell.Directives (HaskellDirectives, pHaskellDirectives)
-import Magix.Languages.Language (Language (..))
-import Magix.Languages.Python.Directives (PythonDirectives, pPythonDirectives)
+import Magix.Language.Bash.Directives (BashDirectives, pBashDirectives)
+import Magix.Language.Common.Directives (Parser)
+import Magix.Language.Haskell.Directives (HaskellDirectives, pHaskellDirectives)
+import Magix.Language.Language (Language (..))
+import Magix.Language.Python.Directives (PythonDirectives, pPythonDirectives)
 import Text.Megaparsec (try)
 import Text.Megaparsec.Char (newline)
 

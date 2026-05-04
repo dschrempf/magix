@@ -1,5 +1,5 @@
 -- |
--- Module      :  Magix.Languages.Language
+-- Module      :  Magix.Language.Language
 -- Description :  Languages supported by Magix
 -- Copyright   :  2025 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
@@ -9,7 +9,7 @@
 -- Portability :  portable
 --
 -- Creation date: Mon Apr 21 14:10:46 2025.
-module Magix.Languages.Language
+module Magix.Language.Language
   ( Language (..),
     getLanguageNameLowercase,
   )

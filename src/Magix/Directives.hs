@@ -23,9 +23,9 @@ where
 import Control.Exception (Exception)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Text (Text)
-import Magix.Languages.Common.Directives (Parser, pDirectiveWithValue, pValue)
-import Magix.Languages.Directives (LanguageDirectives, getDirectivesParser)
-import Magix.Languages.Language (Language (..), getLanguageNameLowercase)
+import Magix.Language.Common.Directives (Parser, pDirectiveWithValue, pValue)
+import Magix.Language.Directives (LanguageDirectives, getDirectivesParser)
+import Magix.Language.Language (Language (..), getLanguageNameLowercase)
 import Text.Megaparsec
   ( MonadParsec (notFollowedBy),
     choice,

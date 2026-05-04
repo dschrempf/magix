@@ -1,5 +1,5 @@
 -- |
--- Module      :  Magix.Languages.Python.Expression
+-- Module      :  Magix.Language.Python.Expression
 -- Description :  Build Python command lines
 -- Copyright   :  2024 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
@@ -9,14 +9,14 @@
 -- Portability :  portable
 --
 -- Creation date: Fri Oct 18 13:36:32 2024.
-module Magix.Languages.Python.Expression
+module Magix.Language.Python.Expression
   ( getPythonReplacements,
   )
 where
 
 import Data.Text (unwords)
-import Magix.Languages.Common.Expression (Replacement)
-import Magix.Languages.Python.Directives (PythonDirectives (..))
+import Magix.Language.Common.Expression (Replacement)
+import Magix.Language.Python.Directives (PythonDirectives (..))
 import Prelude hiding (unwords)
 
 getPythonReplacements :: PythonDirectives -> [Replacement]

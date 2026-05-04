@@ -1,5 +1,5 @@
 -- |
--- Module      :  Magix.Languages.Haskell.Expression
+-- Module      :  Magix.Language.Haskell.Expression
 -- Description :  Build Haskell command lines
 -- Copyright   :  2024 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
@@ -9,14 +9,14 @@
 -- Portability :  portable
 --
 -- Creation date: Fri Oct 18 13:36:32 2024.
-module Magix.Languages.Haskell.Expression
+module Magix.Language.Haskell.Expression
   ( getHaskellReplacements,
   )
 where
 
 import Data.Text (unwords)
-import Magix.Languages.Common.Expression (Replacement)
-import Magix.Languages.Haskell.Directives (HaskellDirectives (..))
+import Magix.Language.Common.Expression (Replacement)
+import Magix.Language.Haskell.Directives (HaskellDirectives (..))
 import Prelude hiding (readFile, unwords)
 
 getHaskellReplacements :: HaskellDirectives -> [Replacement]

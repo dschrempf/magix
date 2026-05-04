@@ -1,5 +1,5 @@
 -- |
--- Module      :  Magix.Languages.Python.DirectivesSpec
+-- Module      :  Magix.Language.Python.DirectivesSpec
 -- Description :  Tests for parsing Python directives
 -- Copyright   :  2024 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
@@ -9,13 +9,13 @@
 -- Portability :  portable
 --
 -- Creation date: Fri Oct 18 09:34:01 2024.
-module Magix.Languages.Python.DirectivesSpec
+module Magix.Language.Python.DirectivesSpec
   ( spec,
   )
 where
 
 import Data.Text (Text, unlines)
-import Magix.Languages.Python.Directives (PythonDirectives (..), pPythonDirectives)
+import Magix.Language.Python.Directives (PythonDirectives (..), pPythonDirectives)
 import Magix.Tools (parseS)
 import Test.Hspec (Spec, describe, it)
 import Prelude hiding (unlines)

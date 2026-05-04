@@ -45,10 +45,10 @@ where
 import Magix.Build (BuildStatus (..), build, getBuildStatus, withBuildLock)
 import Magix.BuildMode (BuildMode (..))
 import Magix.Config (Config, getCacheDir, getConfig)
-import Magix.Env (MagixEnv (..), NixEnv (..))
 import Magix.Directives (Directives (..), getDirectives)
+import Magix.Env (MagixEnv (..), NixEnv (..))
 import Magix.Expression (getNixExpression)
-import Magix.Languages.Directives (LanguageDirectives)
+import Magix.Language.Directives (LanguageDirectives)
 import Magix.Options
   ( CleanOptions (..),
     Command (..),

@@ -1,5 +1,5 @@
 -- |
--- Module      :  Magix.Languages.Bash.Expression
+-- Module      :  Magix.Language.Bash.Expression
 -- Description :  Build Bash command lines
 -- Copyright   :  2024 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
@@ -9,14 +9,14 @@
 -- Portability :  portable
 --
 -- Creation date: Fri Oct 18 13:36:32 2024.
-module Magix.Languages.Bash.Expression
+module Magix.Language.Bash.Expression
   ( getBashReplacements,
   )
 where
 
 import Data.Text (unwords)
-import Magix.Languages.Bash.Directives (BashDirectives (..))
-import Magix.Languages.Common.Expression (Replacement)
+import Magix.Language.Bash.Directives (BashDirectives (..))
+import Magix.Language.Common.Expression (Replacement)
 import Prelude hiding (unwords)
 
 getBashReplacements :: BashDirectives -> [Replacement]

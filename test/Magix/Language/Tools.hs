@@ -1,5 +1,5 @@
 -- |
--- Module      :  Magix.Languages.Tools
+-- Module      :  Magix.Language.Tools
 -- Description :  Language-specific test tools
 -- Copyright   :  2025 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
@@ -9,17 +9,17 @@
 -- Portability :  portable
 --
 -- Creation date: Tue Apr 22 15:19:11 2025.
-module Magix.Languages.Tools
+module Magix.Language.Tools
   ( getEmptyLanguageDirectives,
     getMinimalTestcase,
   )
 where
 
-import Magix.Languages.Bash.Directives (BashDirectives (..))
-import Magix.Languages.Directives (LanguageDirectives (..))
-import Magix.Languages.Haskell.Directives (HaskellDirectives (..))
-import Magix.Languages.Language (Language (..))
-import Magix.Languages.Python.Directives (PythonDirectives (..))
+import Magix.Language.Bash.Directives (BashDirectives (..))
+import Magix.Language.Directives (LanguageDirectives (..))
+import Magix.Language.Haskell.Directives (HaskellDirectives (..))
+import Magix.Language.Language (Language (..))
+import Magix.Language.Python.Directives (PythonDirectives (..))
 import Prelude hiding (readFile)
 
 getEmptyLanguageDirectives :: Language -> LanguageDirectives

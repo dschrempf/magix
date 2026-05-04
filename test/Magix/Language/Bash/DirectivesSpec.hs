@@ -1,5 +1,5 @@
 -- |
--- Module      :  Magix.Languages.Bash.DirectivesSpec
+-- Module      :  Magix.Language.Bash.DirectivesSpec
 -- Description :  Tests for parsing Bash directives
 -- Copyright   :  2024 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
@@ -9,13 +9,13 @@
 -- Portability :  portable
 --
 -- Creation date: Fri Oct 18 09:34:01 2024.
-module Magix.Languages.Bash.DirectivesSpec
+module Magix.Language.Bash.DirectivesSpec
   ( spec,
   )
 where
 
 import Data.Text (Text, unlines)
-import Magix.Languages.Bash.Directives (BashDirectives (..), pBashDirectives)
+import Magix.Language.Bash.Directives (BashDirectives (..), pBashDirectives)
 import Magix.Tools (parseF, parseS)
 import Test.Hspec (Spec, describe, it)
 import Prelude hiding (unlines)
