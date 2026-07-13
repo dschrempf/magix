@@ -26,7 +26,7 @@ import Data.Text (Text)
 import Magix.BuildMode (BuildMode (..))
 import Magix.Env (NixEnv (..), nixEnvDesc)
 import Magix.Hash (MagixHashContents (..), getMagixHash)
-import Magix.NixpkgsPath (getDefaultNixpkgsPath)
+import Magix.NixpkgsPath (getDefaultNixpkgsPath, resolveNixpkgs)
 import Magix.Options (Options (..))
 import Magix.Paths (getBuildDir, getLockPath, getResultLinkPath)
 import System.Directory (canonicalizePath)
@@ -60,7 +60,12 @@ getDefaultNixpkgsPathOrFail (Just np) = case getDefaultNixpkgsPath np of
   Left err -> do
     putStrLn $ "Could not retrieve Nixpkgs path from " <> fst nixEnvDesc.nixPath
     throwIO err
-  Right p -> pure p
+  Right entries -> resolveFirst entries
+  where
+    -- Return the first entry resolving to a Nixpkgs path.
+    resolveFirst [] =
+      die $ "Could not find Nixpkgs in " <> fst nixEnvDesc.nixPath <> ": " <> np
+    resolveFirst (e : es) = resolveNixpkgs e >>= maybe (resolveFirst es) pure
 
 -- | Resolve the build mode.
 -- Priority: script's #!nixpkgs directive > CLI/env > NIX_PATH channel
