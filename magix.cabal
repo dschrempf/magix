@@ -14,7 +14,7 @@ author:             Dominik Schrempf
 maintainer:         dominik.schrempf@gmail.com
 copyright:          2024 Dominik Schrempf
 license:            GPL-3.0-or-later
-license-file:       License.txt
+license-file:       LICENSE
 build-type:         Simple
 extra-doc-files:
   Changelog.org

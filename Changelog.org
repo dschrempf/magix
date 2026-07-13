@@ -1,4 +1,6 @@
 * Unreleased
+- Resolve =nixpkgs= from unprefixed directories in =$NIX_PATH= (like
+  =builtins.findFile=); fixes https://github.com/dschrempf/magix/issues/18
 
 * Version 1.0.0.0
 ** User-facing
