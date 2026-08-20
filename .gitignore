@@ -25,4 +25,3 @@ cabal.project.local~
 
 # Other.
 /.direnv/
-/ai/agent-shell/
