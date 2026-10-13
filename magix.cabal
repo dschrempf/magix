@@ -17,8 +17,8 @@ license:            GPL-3.0-or-later
 license-file:       LICENSE
 build-type:         Simple
 extra-doc-files:
-  Changelog.org
-  Readme.org
+  Changelog.md
+  Readme.md
 
 extra-source-files:
 data-files:
