@@ -30,10 +30,9 @@ Without any flags the command keeps its current behaviour (remove everything).
 
 ### Entry grouping
 
-Each cache entry is a cluster of files sharing a common prefix
-(`<hash>-<name>{,.lock,-script,-build,-result}`). Eviction must remove the
-whole cluster atomically (lock → script link → build dir → result link) to
-avoid leaving partial entries.
+Each cache entry is a slot, one directory per invoked path holding one build
+(`rebuild-replaces-the-superseded-build`). Eviction removes the whole
+directory, taking its lock first.
 
 ### Scheduled eviction (optional / future)
 
