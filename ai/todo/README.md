@@ -9,5 +9,5 @@ From closure measurements of two NixOS systems that install magix
 
 `cache-evicts-by-age-or-count`, `parse-error-shows-the-header-alone`,
 `directive-tests-cover-every-language`, `get-config-has-unit-tests`,
-`format-script-formats-all-code` and `script-run-by-store-path-keeps-one-build`
-have no rank yet.
+`format-script-formats-all-code`, `script-run-by-store-path-keeps-one-build`
+and `slot-of-a-non-ascii-path-ignores-the-locale` have no rank yet.
