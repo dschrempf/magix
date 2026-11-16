@@ -13,6 +13,7 @@ module Magix
   ( -- Options.
     Command (..),
     Options (..),
+    CleanMode (..),
     CleanOptions (..),
     Rebuild (..),
     Verbosity (..),
@@ -34,6 +35,10 @@ module Magix
     getBuildStatus,
     build,
     withBuildLock,
+    resolveResult,
+    -- Cache.
+    removeCacheContents,
+    removeStaleEntries,
     -- Run.
     runScript,
     -- Languages.
@@ -42,15 +47,17 @@ module Magix
   )
 where
 
-import Magix.Build (BuildStatus (..), build, getBuildStatus, withBuildLock)
+import Magix.Build (BuildStatus (..), build, getBuildStatus, resolveResult, withBuildLock)
 import Magix.BuildMode (BuildMode (..))
+import Magix.Cache (removeCacheContents, removeStaleEntries)
 import Magix.Config (Config, getCacheDir, getConfig)
 import Magix.Directives (Directives (..), getDirectives)
 import Magix.Env (MagixEnv (..), NixEnv (..))
 import Magix.Expression (getNixExpression)
 import Magix.Language.Directives (LanguageDirectives)
 import Magix.Options
-  ( CleanOptions (..),
+  ( CleanMode (..),
+    CleanOptions (..),
     Command (..),
     Options (..),
     Rebuild (..),

@@ -53,9 +53,9 @@ Scripts are parsed with `megaparsec`. The top-level parser (`pDirectives`) reads
 
 Each language has a `Template.nix` file (declared as `data-files` in the cabal file) with placeholders like `__SCRIPT_NAME__` and `__PACKAGES__`. The expression modules produce `[Replacement]` (pairs of placeholder/value `Text`) that are applied to the template via `Data.Text.replace`.
 
-### Build & Cache (`src/Magix/Build.hs`, `src/Magix/Config.hs`, `src/Magix/Paths.hs`)
+### Build & Cache (`src/Magix/Build.hs`, `src/Magix/Cache.hs`, `src/Magix/Config.hs`, `src/Magix/Hash.hs`, `src/Magix/Paths.hs`)
 
-`Config` holds all relevant paths (cache dir, build dir, result link, lock file). `getBuildStatus` checks whether a result symlink exists. `build` writes the generated Nix expression to disk and calls `nix-build`. A file lock (`filelock`) prevents concurrent builds for the same script.
+The cache holds one slot per path a script is invoked by (absolute, symlinks unresolved), named by a hash of that path (`getSlotHash`). A slot holds a `lock`, a `path` symlink to the invoked path, and one build named by the content hash (`getMagixHash`): `<hash>-build/` and the `<hash>-result` symlink. `Config` holds these paths. `getBuildStatus` checks whether the result symlink exists. `build` writes the generated Nix expression to disk, calls `nix-build`, and then removes the builds it supersedes (`removeSuperseded`). A slot's `lock` (`filelock`) serializes its builds; the result is resolved to its store path while holding it. Builds also hold the cache's `lock` (`getCacheLockPath`) shared, and `clean-magix-cache` holds it exclusively, so cleaning waits for running builds. `clean-magix-cache --stale` removes slots whose invoked path is gone, and every entry that is no slot.
 
 ### Adding a New Language
 

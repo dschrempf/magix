@@ -12,10 +12,11 @@
 module Magix.Hash
   ( MagixHashContents (..),
     getMagixHash,
+    getSlotHash,
   )
 where
 
-import Crypto.Hash.SHA256 (finalize, init, update)
+import Crypto.Hash.SHA256 (finalize, hash, init, update)
 import Data.ByteString (ByteString, toStrict)
 import Data.ByteString.Builder (Builder, charUtf8, intDec, toLazyByteString)
 import Data.Foldable qualified as Foldable
@@ -26,9 +27,10 @@ import Magix.BuildMode (BuildMode (..))
 import Paths_magix (version)
 import Prelude hiding (init)
 
+-- | What a build depends on, besides the script's name, which the slot fixes
+-- (see `getSlotHash`). The build reads a copy of the script, never its path.
 data MagixHashContents = MagixHashContents
   { buildMode :: !BuildMode,
-    scriptPath :: !FilePath,
     scriptContents :: !ByteString
   }
   deriving (Eq, Show, Generic)
@@ -40,6 +42,7 @@ buildModeBytes :: BuildMode -> ByteString
 buildModeBytes (ChannelBuild path) = toByteStringWith charUtf8 $ "channel:" <> path
 buildModeBytes (FlakeBuild ref) = toByteStringWith charUtf8 $ "flake:" <> unpack ref
 
+-- | Identify a build within a slot.
 getMagixHash :: MagixHashContents -> ByteString
 getMagixHash x =
   finalize $
@@ -48,6 +51,11 @@ getMagixHash x =
       init
       [ toByteStringWith intDec $ versionBranch version,
         buildModeBytes x.buildMode,
-        toByteStringWith charUtf8 x.scriptPath,
         x.scriptContents
       ]
+
+-- | Identify a slot by the absolute path a script is invoked by, symbolic links
+-- unresolved: a script installed from a flake is invoked by a stable path,
+-- while its canonical path changes with every deploy.
+getSlotHash :: FilePath -> ByteString
+getSlotHash = hash . toByteStringWith charUtf8

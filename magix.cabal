@@ -59,6 +59,7 @@ library
     Magix
     Magix.Build
     Magix.BuildMode
+    Magix.Cache
     Magix.Config
     Magix.Directives
     Magix.Env
@@ -110,8 +111,6 @@ executable magix
     , ansi-terminal
     , base           >=4.7 && <5
     , bytestring
-    , directory
-    , filepath
     , hslogger
     , magix
     , text
@@ -122,6 +121,7 @@ test-suite test-magix
   hs-source-dirs:     test
   other-modules:
     Magix.BuildSpec
+    Magix.CacheSpec
     Magix.DirectivesSpec
     Magix.Language.Bash.DirectivesSpec
     Magix.Language.Bash.ExpressionSpec
@@ -135,13 +135,14 @@ test-suite test-magix
     Magix.Tools
 
   autogen-modules:
-  ghc-options:
+  ghc-options:        -threaded
   type:               exitcode-stdio-1.0
   build-depends:
     , base        >=4.7 && <5
     , bytestring
     , directory
     , filepath
+    , hslogger
     , hspec
     , magix
     , megaparsec

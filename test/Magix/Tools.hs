@@ -27,8 +27,18 @@ import Data.Text (Text, isInfixOf, unwords)
 import Magix.BuildMode (BuildMode (..))
 import Magix.Config (Config (..))
 import Magix.Expression (getFlakeWrapper, getNixExpression, getReplacements, getTemplate)
+import Magix.Hash (getSlotHash)
 import Magix.Language.Directives (LanguageDirectives, getLanguage)
-import System.Directory (createDirectory, getTemporaryDirectory)
+import Magix.Paths
+  ( getBuildDir,
+    getBuildExprPath,
+    getCacheLockPath,
+    getInvokedPathLink,
+    getLockPath,
+    getResultLinkPath,
+    getSlotDir,
+  )
+import System.Directory (createDirectory, createDirectoryIfMissing, getTemporaryDirectory)
 import System.FilePath ((</>))
 import System.Random.Stateful (randomIO, randomRIO)
 import Test.Hspec (Expectation, HasCallStack, Spec, describe, it, shouldBe, shouldSatisfy)
@@ -54,17 +64,28 @@ getRandomFakeConfig = do
   tmp <- (</> dir) <$> getTemporaryDirectory
   createDirectory tmp
   hsh <- getRandomByteString
+  let invokedPath = tmp </> "fakeScriptPath"
+      scriptName = "fakeScriptName"
+      cacheDir = tmp </> "fakeCacheDir"
+      slotDir = getSlotDir cacheDir (getSlotHash invokedPath) scriptName
+      buildDir = getBuildDir slotDir hsh
+  createDirectoryIfMissing True slotDir
   pure $
     Config
-      (tmp </> "fakeScriptPath")
-      (tmp </> "fakeScriptName")
-      (ChannelBuild (tmp </> "fakeNixpkgsPath"))
-      hsh
-      (tmp </> "fakeCacheDir")
-      (tmp </> "fakeLockPath")
-      (tmp </> "fakeBuildDir")
-      (tmp </> "fakeBuildExprPath")
-      (tmp </> "fakeResultDir")
+      { invokedPath = invokedPath,
+        scriptPath = invokedPath,
+        scriptName = scriptName,
+        buildMode = ChannelBuild (tmp </> "fakeNixpkgsPath"),
+        magixHash = hsh,
+        cacheDir = cacheDir,
+        cacheLockPath = getCacheLockPath cacheDir,
+        slotDir = slotDir,
+        lockPath = getLockPath slotDir,
+        invokedPathLink = getInvokedPathLink slotDir,
+        buildDir = buildDir,
+        buildExprPath = getBuildExprPath buildDir,
+        resultLinkPath = getResultLinkPath slotDir hsh
+      }
 
 getRandomFakeFlakeConfig :: Text -> IO Config
 getRandomFakeFlakeConfig ref = do

@@ -15,5 +15,3 @@ Resolve a `flake:` entry to its store path before hashing. Either
 measure against the 20 ms a cached run costs, or reading the registries
 (`/etc/nix/registry.json`, then the user's). A system can sidestep it with
 a `NIX_PATH` holding the store path (`nix.nixPath = [ "nixpkgs=${nixpkgs}" ]`).
-
-Wait for `rebuild-replaces-the-superseded-build` first.

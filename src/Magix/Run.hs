@@ -19,7 +19,8 @@ import Magix.Options (Options (scriptArgs))
 import System.FilePath ((</>))
 import System.Posix.Process (executeFile)
 
-runScript :: Options -> Config -> IO a
-runScript opts conf = executeFile executable False (scriptArgs opts) Nothing
+-- | Run the script, given the store path of its build result.
+runScript :: Options -> Config -> FilePath -> IO a
+runScript opts conf result = executeFile executable False (scriptArgs opts) Nothing
   where
-    executable = resultLinkPath conf </> "bin" </> scriptName conf
+    executable = result </> "bin" </> scriptName conf

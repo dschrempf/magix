@@ -14,6 +14,7 @@ module Magix.Build
     getBuildStatus,
     build,
     withBuildLock,
+    resolveResult,
   )
 where
 
@@ -21,10 +22,12 @@ import Control.Monad (unless, when)
 import Data.Text (Text)
 import Data.Text.IO (writeFile)
 import Magix.BuildMode (BuildMode (..))
+import Magix.Cache (recordInvokedPath, removeSuperseded)
 import Magix.Config (Config (..))
 import Magix.Expression (getFlakeWrapper)
 import System.Directory
-  ( copyFile,
+  ( canonicalizePath,
+    copyFile,
     createDirectoryIfMissing,
     doesDirectoryExist,
     removeDirectoryRecursive,
@@ -44,6 +47,8 @@ getBuildStatus c = do
   resultDirExists <- doesDirectoryExist c.resultLinkPath
   pure $ if resultDirExists then HasBeenBuilt else NeedToBuild
 
+-- | Remove the build of the current contents, left by a forced or failed build;
+-- `removeSuperseded` removes the others.
 removeBuild :: Logger -> Config -> IO ()
 removeBuild logger cfg = do
   let logD = logL logger DEBUG
@@ -62,8 +67,10 @@ build :: Logger -> Config -> Text -> IO ()
 build logger cfg expr = do
   let logD = logL logger DEBUG
       logE = logL logger ERROR
-  logD "Removing previous builds"
+  logD "Removing an earlier build of the same contents, if any"
   removeBuild logger cfg
+  logD $ "Recording invoked path: " <> cfg.invokedPathLink
+  recordInvokedPath cfg.slotDir cfg.invokedPath
   logD $ "Recreating the build directory: " <> cfg.buildDir
   createDirectoryIfMissing True cfg.buildDir
   logD $ "Copying script to build directory: " <> cfg.buildDir </> "script"
@@ -104,12 +111,23 @@ build logger cfg expr = do
   unless (exitCode == ExitSuccess) $ do
     logE $ "Build failed with code: " <> show exitCode
     exitFailure
+  removeSuperseded logger cfg
 
-withBuildLock :: Logger -> Config -> IO () -> IO ()
+-- | Run the action holding the lock of the slot, and the cache lock shared:
+-- builds of different slots run in parallel, and cleaning the cache waits for
+-- them.
+withBuildLock :: Logger -> Config -> IO a -> IO a
 withBuildLock logger cfg action = do
-  -- Make sure the cache directory exists.
-  createDirectoryIfMissing True cfg.cacheDir
   let logD = logL logger DEBUG
-  logD "Acquiring lock"
-  withFileLock cfg.lockPath Exclusive $ const action
-  logD "Released lock"
+  createDirectoryIfMissing True cfg.cacheDir
+  logD "Acquiring locks"
+  x <- withFileLock cfg.cacheLockPath Shared $ \_ -> do
+    createDirectoryIfMissing True cfg.slotDir
+    withFileLock cfg.lockPath Exclusive $ const action
+  logD "Released locks"
+  pure x
+
+-- | The store path of the build result. Call it holding the lock: a rebuild of
+-- a changed script removes the link.
+resolveResult :: Config -> IO FilePath
+resolveResult cfg = canonicalizePath cfg.resultLinkPath

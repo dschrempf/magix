@@ -24,3 +24,16 @@ built:
 
 This comes before `flake-nix-path-entry-resolves-to-a-store-path`, which
 would otherwise add a build per script with every nixpkgs update.
+
+## Outcome
+
+Done on 2026-11-16, as proposed. A slot is a cache directory per invoked path
+(absolute, symlinks unresolved), holding `lock`, `path` and one build named by
+the content hash; a successful build removes the others (`removeSuperseded` in
+`src/Magix/Cache.hs`). The content hash no longer covers the script path: the
+build reads a copy of the script, so a deploy that only moves the store path
+is a cache hit. `clean-magix-cache --stale` removes slots whose invoked path is
+gone and every entry that is no slot, the old layout included. The result link
+is resolved to its store path under the lock. `scripts/check` covers an edit,
+a deploy and `--stale`; the first two fail without `removeSuperseded` and
+with the path back in the content hash, respectively.

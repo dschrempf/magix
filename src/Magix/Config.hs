@@ -25,26 +25,43 @@ import Data.ByteString (ByteString)
 import Data.Text (Text)
 import Magix.BuildMode (BuildMode (..))
 import Magix.Env (NixEnv (..), nixEnvDesc)
-import Magix.Hash (MagixHashContents (..), getMagixHash)
+import Magix.Hash (MagixHashContents (..), getMagixHash, getSlotHash)
 import Magix.NixpkgsPath (getDefaultNixpkgsPath, resolveNixpkgs)
 import Magix.Options (Options (..))
-import Magix.Paths (getBuildDir, getLockPath, getResultLinkPath)
-import System.Directory (canonicalizePath)
+import Magix.Paths
+  ( getBuildDir,
+    getBuildExprPath,
+    getCacheLockPath,
+    getInvokedPathLink,
+    getLockPath,
+    getResultLinkPath,
+    getSlotDir,
+  )
+import System.Directory (canonicalizePath, makeAbsolute)
 import System.Environment.XDG.BaseDir (getUserCacheDir)
 import System.Exit (die)
-import System.FilePath (takeBaseName, (</>))
+import System.FilePath (takeBaseName)
 import Prelude hiding (readFile)
 
 data Config = Config
-  { scriptPath :: !FilePath,
+  { -- | Absolute path the script is invoked by; see `getSlotHash`.
+    invokedPath :: !FilePath,
+    -- | Canonical path of the script, which the build copies.
+    scriptPath :: !FilePath,
     scriptName :: !String,
     buildMode :: !BuildMode,
     -- | See `getMagixHash`.
     magixHash :: !ByteString,
-    -- | Cache directory containing Nix expressions and build results.
+    -- | Cache directory containing one slot per invoked path.
     cacheDir :: !FilePath,
-    -- | File used for locking the build.
+    -- | See `getCacheLockPath`.
+    cacheLockPath :: !FilePath,
+    -- | Directory holding the build of the script; a rebuild replaces it.
+    slotDir :: !FilePath,
+    -- | File used for locking the slot.
     lockPath :: !FilePath,
+    -- | Symbolic link to the invoked path, for removing stale slots.
+    invokedPathLink :: !FilePath,
     -- | Directory containing the Nix expression building the result.
     buildDir :: !FilePath,
     -- | The Nix expression building the result (always default.nix).
@@ -78,6 +95,7 @@ resolveBuildMode opts mDirectiveRef =
 
 getConfig :: Options -> ByteString -> Maybe Text -> IO Config
 getConfig opts scriptContents mDirectiveRef = do
+  invokedPath <- makeAbsolute p
   scriptPath <- canonicalizePath p
   cacheDir <- getCacheDir opts.cachePath
   buildMode <- resolveBuildMode opts mDirectiveRef
@@ -86,13 +104,15 @@ getConfig opts scriptContents mDirectiveRef = do
         getMagixHash $
           MagixHashContents
             { buildMode = buildMode,
-              scriptPath = scriptPath,
               scriptContents = scriptContents
             }
-      lockPath = getLockPath cacheDir magixHash scriptName
-      buildDir = getBuildDir cacheDir magixHash scriptName
-      buildExprPath = buildDir </> "default.nix"
-      resultLinkPath = getResultLinkPath cacheDir magixHash scriptName
+      cacheLockPath = getCacheLockPath cacheDir
+      slotDir = getSlotDir cacheDir (getSlotHash invokedPath) scriptName
+      lockPath = getLockPath slotDir
+      invokedPathLink = getInvokedPathLink slotDir
+      buildDir = getBuildDir slotDir magixHash
+      buildExprPath = getBuildExprPath buildDir
+      resultLinkPath = getResultLinkPath slotDir magixHash
   pure $ Config {..}
   where
     p = opts.scriptPath
