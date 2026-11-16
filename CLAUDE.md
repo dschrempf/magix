@@ -70,3 +70,7 @@ Each language has a `Template.nix` file (declared as `data-files` in the cabal f
 ## Compiler Settings
 
 All targets use `-Wall -Werror -Wunused-packages -Wredundant-constraints` with `GHC2021`. Default extensions: `DuplicateRecordFields`, `OverloadedRecordDot`, `OverloadedStrings`.
+
+## Commits
+
+Conventional Commits: `type(scope): statement`, e.g. `fix(cache): …`, `docs(ai): …`. The scope names a module (`run`, `cache`, `directives`, a language) or `flake`, `ai`, `readme`, `changelog`. Older history mixes styles (`tooling: update nix flake`, bare sentences); new commits don't follow it.
