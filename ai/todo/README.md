@@ -7,5 +7,6 @@ From closure measurements of two NixOS systems that install magix
 2. `script-builds-as-a-derivation-for-checks`.
 3. `flake-template-drops-flake-utils`.
 
-`cache-evicts-by-age-or-count`, `parse-error-shows-the-header-alone` and
-`directive-tests-cover-every-language` have no rank yet.
+`cache-evicts-by-age-or-count`, `parse-error-shows-the-header-alone`,
+`directive-tests-cover-every-language` and
+`process-drops-non-ascii-arguments-under-c-locale` have no rank yet.
