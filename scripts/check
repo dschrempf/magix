@@ -104,6 +104,24 @@ check_rebuild_replaces_superseded() {
   assert_one_build "${cache}"
 }
 
+check_failed_build_keeps_previous() {
+  # A failed build of an edited script keeps the build it would supersede.
+  local cache script_dir previous
+  cache=$(mktemp -u -d -t magix-XXXXXX)
+  script_dir=$(mktemp -d -t magix-script-XXXXXX)
+  write_script "${script_dir}/script" "First version"
+  cabal run magix -- --cache-path "${cache}" -v "${script_dir}/script"
+  previous=$(echo "${cache}"/*/*-result)
+  printf '#!/usr/bin/env magix\n#!magix bash\n#!packages magix-no-such-package\necho "Broken"\n' \
+    >"${script_dir}/script"
+  if cabal run magix -- --cache-path "${cache}" "${script_dir}/script"; then
+    fail "the build of a script with a missing package succeeded"
+  fi
+  assert_one_build "${cache}"
+  [[ $(echo "${cache}"/*/*-result) == "${previous}" ]] ||
+    fail "the failed build removed the previous one"
+}
+
 check_deploy_keeps_build() {
   # A deploy moves the script behind the path it is invoked by: an unchanged
   # script is not rebuilt, and its build does not need the old location.
@@ -171,6 +189,7 @@ check_c_locale
 check_parallel_builds
 check_script_move
 check_rebuild_replaces_superseded
+check_failed_build_keeps_previous
 check_deploy_keeps_build
 check_clean_stale
 check_stale_keeps_non_ascii_path
