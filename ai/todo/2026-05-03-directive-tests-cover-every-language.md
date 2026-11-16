@@ -5,11 +5,11 @@
 Two TODOs in `test/Magix/DirectivesSpec.hs` note that certain tests are written
 manually for specific languages rather than being data-driven over all languages:
 
-1. **Line 85** — the "fails on wrong language directives" block hardcodes `bash`
+1. **Line 87** — the "fails on wrong language directives" block hardcodes `bash`
    in the failure inputs (`#!magix bash\n\n#!packages bar` etc.). Adding a new
    language does not automatically exercise these failure paths.
 
-2. **Line 100** — the "parses X language directives" success cases are written
+2. **Line 102** — the "parses X language directives" success cases are written
    out individually per language. Again, adding a language requires remembering
    to add a test here.
 
@@ -36,14 +36,14 @@ The existing mixed failure cases that are not language-specific (e.g.
 ### Success tests
 
 Introduce `getMinimalDirectiveInput :: Language -> Text` in
-`Magix.Languages.Tools` alongside the existing `getMinimalTestcase`. This
+`Magix.Language.Tools` alongside the existing `getMinimalTestcase`. This
 returns a one-liner directive string for each language (e.g.
 `"#!magix bash\n#!packages bar"`). Then drive the success spec with
 `mapM_ pMinimalDirectivesFor languages`.
 
 ### Scope
 
-Only `DirectivesSpec.hs` and `Magix.Languages.Tools` are in scope. Expression
+Only `DirectivesSpec.hs` and `Magix.Language.Tools` are in scope. Expression
 specs are already data-driven via `testExpression`.
 
 ## Expected outcome

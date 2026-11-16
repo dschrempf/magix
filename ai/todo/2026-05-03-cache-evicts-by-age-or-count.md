@@ -48,6 +48,6 @@ can be run on a timer.
 - Is there a need for a total-size cap (`--max-size`) in addition to age/count
   limits? Each result symlink is a garbage-collector root, so it keeps its
   build in the Nix store: `nix-collect-garbage` frees nothing a cache entry
-  holds. One schwarzbaer cache rooted 36 GiB outside the system's closure
+  holds. One user's cache rooted 36 GiB outside the system's closure
   (`rebuild-replaces-the-superseded-build`, which removes most of it at
   build time).

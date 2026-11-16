@@ -45,11 +45,11 @@ CI runs `nix build` and then `nix develop .#check --command check`.
 
 ## Architecture
 
-### Directive Parsing (`src/Magix/Directives.hs`, `src/Magix/Languages/*/Directives.hs`)
+### Directive Parsing (`src/Magix/Directives.hs`, `src/Magix/Language/*/Directives.hs`)
 
-Scripts are parsed with `megaparsec`. The top-level parser (`pDirectives`) reads the shebang, then dispatches to a language-specific parser based on the `#!magix <language>` directive. Each language module defines its own `Directives` type and parser (e.g. `BashDirectives`, `HaskellDirectives`). All language `Directives` are unified via the `Directives` sum type in `src/Magix/Languages/Directives.hs`.
+Scripts are parsed with `megaparsec`. The top-level parser (`pDirectives`) reads the shebang, then dispatches to a language-specific parser based on the `#!magix <language>` directive. Each language module defines its own `Directives` type and parser (e.g. `BashDirectives`, `HaskellDirectives`). All language `Directives` are unified via the `Directives` sum type in `src/Magix/Language/Directives.hs`.
 
-### Nix Expression Generation (`src/Magix/Expression.hs`, `src/Magix/Languages/*/Expression.hs`)
+### Nix Expression Generation (`src/Magix/Expression.hs`, `src/Magix/Language/*/Expression.hs`)
 
 Each language has a `Template.nix` file (declared as `data-files` in the cabal file) with placeholders like `__SCRIPT_NAME__` and `__PACKAGES__`. The expression modules produce `[Replacement]` (pairs of placeholder/value `Text`) that are applied to the template via `Data.Text.replace`.
 
@@ -59,12 +59,12 @@ Each language has a `Template.nix` file (declared as `data-files` in the cabal f
 
 ### Adding a New Language
 
-1. Add the constructor to `Language` in `src/Magix/Languages/Language.hs`.
-2. Create `src/Magix/Languages/<Lang>/Directives.hs` with a `<Lang>Directives` type and parser.
-3. Create `src/Magix/Languages/<Lang>/Expression.hs` with replacements.
-4. Create `src/Magix/Languages/<Lang>/Template.nix`.
+1. Add the constructor to `Language` in `src/Magix/Language/Language.hs`.
+2. Create `src/Magix/Language/<Lang>/Directives.hs` with a `<Lang>Directives` type and parser.
+3. Create `src/Magix/Language/<Lang>/Expression.hs` with replacements.
+4. Create `src/Magix/Language/<Lang>/Template.nix`.
 5. Register the template in `data-files` in `magix.cabal`.
-6. Wire into `src/Magix/Languages/Directives.hs` and `src/Magix/Languages/Expression.hs`.
+6. Wire into `src/Magix/Language/Directives.hs` and `src/Magix/Language/Expression.hs`.
 7. Add test scripts under `test-scripts/<lang>/`.
 
 ## Compiler Settings

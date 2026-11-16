@@ -1,5 +1,11 @@
 # Spec: Nix Flakes Support
 
+**Outcome.** Shipped in version 1.0.0.0 (`Changelog.md`), as
+`plan.md` designs it: one `src/Magix/FlakeTemplate.nix` wraps each
+language's `Template.nix`, instead of a flake template per language.
+
+- `plan.md`: the implementation plan, task by task.
+
 ## Problem
 
 All three language templates use `pkgs ? import <nixpkgs> {}`, which requires

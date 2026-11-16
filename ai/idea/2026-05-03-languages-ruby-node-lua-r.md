@@ -50,6 +50,6 @@ separately.
 
 Each new language needs:
 - `test-scripts/<lang>/minimal` and `test-scripts/<lang>/args`
-- `test/Magix/Languages/<Lang>/DirectivesSpec.hs`
-- `test/Magix/Languages/<Lang>/ExpressionSpec.hs`
-- An entry in `Magix.Languages.Tools` (`getEmptyDirectives`, `getMinimalTestcase`)
+- `test/Magix/Language/<Lang>/DirectivesSpec.hs`
+- `test/Magix/Language/<Lang>/ExpressionSpec.hs`
+- An entry in `Magix.Language.Tools` (`getEmptyDirectives`, `getMinimalTestcase`)

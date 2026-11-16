@@ -1,18 +1,15 @@
 # A rebuild replaces the build it supersedes
 
-Date: 2026-11-16
-
 A cache entry is `<hash>-<name>{,.lock,-script,-build,-result}`, and the
 hash covers the script's contents (`src/Magix/Hash.hs`). A changed script
 gets a new entry; the old entry's `-result` is a garbage-collector root, so
 its build stays.
 
-On schwarzbaer on 2026-11-16, before the cache was cleaned, `~/.cache/magix`
-held 535 result links for 30 script names: 97 builds of `nix-run-rofi`, 92
-of `syncthing-rescan-all`, 82 of `nixos-specialize`. They rooted 37.5 GiB,
-36.0 GiB of it outside the system's closure.
+On one system on 2026-11-16, before the cache was cleaned, `~/.cache/magix`
+held 535 result links for 30 script names, up to 97 builds of one script.
+They rooted 37.5 GiB, 36.0 GiB of it outside the system's closure.
 
-`spec-cache-eviction` trims by age or count. An entry superseded by a newer
+`cache-evicts-by-age-or-count` trims by age or count. An entry superseded by a newer
 build of the same script is dead at once, and should go when the new one is
 built:
 

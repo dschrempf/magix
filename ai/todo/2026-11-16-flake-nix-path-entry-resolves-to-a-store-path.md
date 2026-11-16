@@ -1,7 +1,5 @@
 # A `flake:` entry of `NIX_PATH` resolves to a store path
 
-Date: 2026-11-16
-
 A flake-built NixOS sets `NIX_PATH=nixpkgs=flake:nixpkgs`
 (`nixpkgs.flake.setNixPath`, on by default). magix's default build mode
 takes the entry's text as the path (`resolveNixpkgs` in
