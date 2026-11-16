@@ -15,12 +15,18 @@ module Magix.CacheSpec
 where
 
 import Data.List (sort)
-import Magix.Cache (readInvokedPath, recordInvokedPath, removeStaleEntries, removeSuperseded)
+import Magix.Cache
+  ( readInvokedPath,
+    recordInvokedPath,
+    removeCacheContents,
+    removeStaleEntries,
+    removeSuperseded,
+  )
 import Magix.Config (Config (..))
 import Magix.Hash (getSlotHash)
 import Magix.Paths (getSlotDir)
 import Magix.Tools (getRandomFakeConfig)
-import System.Directory (createDirectory, createDirectoryIfMissing, listDirectory)
+import System.Directory (createDirectory, createDirectoryIfMissing, doesPathExist, listDirectory)
 import System.FilePath (takeDirectory, takeFileName, (</>))
 import System.Log.Logger (getLogger)
 import System.Posix (createSymbolicLink)
@@ -64,7 +70,21 @@ spec = do
         `shouldBe` sort
           (map takeFileName [c.lockPath, c.invokedPathLink, c.buildDir, c.resultLinkPath])
 
+  describe "removeCacheContents" $ do
+    it "accepts a missing cache directory" $ do
+      c <- getRandomFakeConfig
+      let cacheDir = takeDirectory c.cacheDir </> "missing"
+      removeCacheContents cacheDir
+      doesPathExist cacheDir `shouldReturn` False
+
   describe "removeStaleEntries" $ do
+    it "accepts a missing cache directory" $ do
+      logger <- getLogger "test"
+      c <- getRandomFakeConfig
+      let cacheDir = takeDirectory c.cacheDir </> "missing"
+      removeStaleEntries logger cacheDir
+      doesPathExist cacheDir `shouldReturn` False
+
     it "keeps slots of existing scripts and removes everything else" $ do
       logger <- getLogger "test"
       c <- getRandomFakeConfig

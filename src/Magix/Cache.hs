@@ -48,9 +48,15 @@ removeEntry path = do
 listEntries :: FilePath -> IO [FilePath]
 listEntries dir = map (dir </>) <$> listDirectory dir
 
+-- | The entries of the cache directory; none before the first build creates it.
+listCacheEntries :: FilePath -> IO [FilePath]
+listCacheEntries cacheDir = do
+  exists <- doesDirectoryExist cacheDir
+  if exists then listEntries cacheDir else pure []
+
 -- | Remove everything in the cache directory.
 removeCacheContents :: FilePath -> IO ()
-removeCacheContents cacheDir = listEntries cacheDir >>= mapM_ removeEntry
+removeCacheContents cacheDir = listCacheEntries cacheDir >>= mapM_ removeEntry
 
 -- | Record the path the script is invoked by in its slot, as a symbolic link:
 -- the link keeps the bytes of the path under any locale, and dangles once the
@@ -86,7 +92,7 @@ getCacheEntry entry = do
 removeStaleEntries :: Logger -> FilePath -> IO ()
 removeStaleEntries logger cacheDir = do
   let logD = logL logger DEBUG
-  entries <- listEntries cacheDir
+  entries <- listCacheEntries cacheDir
   forM_ entries $ \entry ->
     getCacheEntry entry >>= \case
       Slot invokedPath -> do
