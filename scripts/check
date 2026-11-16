@@ -17,174 +17,174 @@ echo "Testing"
 cabal test
 
 check_sample_scripts() {
-  # Sample scripts.
-  CACHE_DIR=$(mktemp -u -d -t magix-XXXXXX)
-  echo "Temporary cache directory is ${CACHE_DIR}"
-  for l in "${LANGUAGES[@]}"; do
-    echo "Running sample scripts for language ${l}"
-    dir="test-scripts/${l}"
-    cabal run magix -- --cache-path "${CACHE_DIR}" -v "${dir}/args" -h and other args
-    cabal run magix -- --cache-path "${CACHE_DIR}" -v "${dir}/empty"
-    cabal run magix -- --cache-path "${CACHE_DIR}" -v "${dir}/hello-flake"
-    cabal run magix -- --cache-path "${CACHE_DIR}" -v "${dir}/minimal"
-    cabal run magix -- --cache-path "${CACHE_DIR}" -v "${dir}/minimal with spaces"
-  done
+    # Sample scripts.
+    CACHE_DIR=$(mktemp -u -d -t magix-XXXXXX)
+    echo "Temporary cache directory is ${CACHE_DIR}"
+    for l in "${LANGUAGES[@]}"; do
+        echo "Running sample scripts for language ${l}"
+        dir="test-scripts/${l}"
+        cabal run magix -- --cache-path "${CACHE_DIR}" -v "${dir}/args" -h and other args
+        cabal run magix -- --cache-path "${CACHE_DIR}" -v "${dir}/empty"
+        cabal run magix -- --cache-path "${CACHE_DIR}" -v "${dir}/hello-flake"
+        cabal run magix -- --cache-path "${CACHE_DIR}" -v "${dir}/minimal"
+        cabal run magix -- --cache-path "${CACHE_DIR}" -v "${dir}/minimal with spaces"
+    done
 }
 
 check_parallel_builds() {
-  # Parallel builds.
-  CACHE_DIR_PARALLEL=$(mktemp -u -d -t magix-XXXXXX)
-  # We assume Magix has been built.
-  MAGIX=$(cabal list-bin magix)
-  echo "Temporary cache directory for parallel builds is ${CACHE_DIR_PARALLEL}"
-  for l in "${LANGUAGES[@]}"; do
-    echo "Running parallel builds for language ${l}"
-    dir="test-scripts/${l}"
-    # We use `cabal exec`, because `cabal run` leads to weird linker errors
-    # and core dumps... (Why)?
-    parallel -N0 \
-      cabal exec -- "${MAGIX}" --cache-path "${CACHE_DIR_PARALLEL}" -v "${dir}/minimal" \
-      ::: {1..10}
-  done
+    # Parallel builds.
+    CACHE_DIR_PARALLEL=$(mktemp -u -d -t magix-XXXXXX)
+    # We assume Magix has been built.
+    MAGIX=$(cabal list-bin magix)
+    echo "Temporary cache directory for parallel builds is ${CACHE_DIR_PARALLEL}"
+    for l in "${LANGUAGES[@]}"; do
+        echo "Running parallel builds for language ${l}"
+        dir="test-scripts/${l}"
+        # We use `cabal exec`, because `cabal run` leads to weird linker errors
+        # and core dumps... (Why)?
+        parallel -N0 \
+            cabal exec -- "${MAGIX}" --cache-path "${CACHE_DIR_PARALLEL}" -v "${dir}/minimal" \
+            ::: {1..10}
+    done
 }
 
 check_script_move() {
-  # Check if Magix works after script has been moved.
-  SCRIPT_DIR=$(mktemp -d -t magix-script-XXXXXX)
-  echo "Temporary script path is ${SCRIPT_DIR}"
-  SCRIPT_NAME_A="${SCRIPT_DIR}/script_a"
-  SCRIPT_NAME_B="${SCRIPT_DIR}/script_b"
+    # Check if Magix works after script has been moved.
+    SCRIPT_DIR=$(mktemp -d -t magix-script-XXXXXX)
+    echo "Temporary script path is ${SCRIPT_DIR}"
+    SCRIPT_NAME_A="${SCRIPT_DIR}/script_a"
+    SCRIPT_NAME_B="${SCRIPT_DIR}/script_b"
 
-  cat <<EOF >"${SCRIPT_NAME_A}"
+    cat <<EOF >"${SCRIPT_NAME_A}"
 #!/usr/bin/env magix
 #!magix bash
 echo "Hello from the script!"
 EOF
 
-  cabal run magix -- --cache-path "${CACHE_DIR}" -v "${SCRIPT_NAME_A}"
-  mv "${SCRIPT_NAME_A}" "${SCRIPT_NAME_B}"
-  cabal run magix -- --cache-path "${CACHE_DIR}" -v "${SCRIPT_NAME_B}"
+    cabal run magix -- --cache-path "${CACHE_DIR}" -v "${SCRIPT_NAME_A}"
+    mv "${SCRIPT_NAME_A}" "${SCRIPT_NAME_B}"
+    cabal run magix -- --cache-path "${CACHE_DIR}" -v "${SCRIPT_NAME_B}"
 }
 
 check_c_locale() {
-  # The build output of Nix is UTF-8, also under a locale without it.
-  for l in "${LANGUAGES[@]}"; do
-    echo "Building under the C locale for language ${l}"
-    LC_ALL=C cabal run magix -- --cache-path "${CACHE_DIR}" -v -f "test-scripts/${l}/hello-flake"
-  done
+    # The build output of Nix is UTF-8, also under a locale without it.
+    for l in "${LANGUAGES[@]}"; do
+        echo "Building under the C locale for language ${l}"
+        LC_ALL=C cabal run magix -- --cache-path "${CACHE_DIR}" -v -f "test-scripts/${l}/hello-flake"
+    done
 }
 
 fail() {
-  echo "Check failed: $*" >&2
-  exit 1
+    echo "Check failed: $*" >&2
+    exit 1
 }
 
 # Write a Bash script printing its second argument to the path given first.
 write_script() {
-  printf '#!/usr/bin/env magix\n#!magix bash\necho "%s"\n' "$2" >"$1"
+    printf '#!/usr/bin/env magix\n#!magix bash\necho "%s"\n' "$2" >"$1"
 }
 
 # Assert the cache holds one build.
 assert_one_build() {
-  local results=("$1"/*/*-result)
-  [[ ${#results[@]} -eq 1 && -e ${results[0]} ]] ||
-    fail "expected one build in $1, found: ${results[*]}"
+    local results=("$1"/*/*-result)
+    [[ ${#results[@]} -eq 1 && -e ${results[0]} ]] ||
+        fail "expected one build in $1, found: ${results[*]}"
 }
 
 check_rebuild_replaces_superseded() {
-  # An edited script replaces its build.
-  local cache script_dir
-  cache=$(mktemp -u -d -t magix-XXXXXX)
-  script_dir=$(mktemp -d -t magix-script-XXXXXX)
-  write_script "${script_dir}/script" "First version"
-  cabal run magix -- --cache-path "${cache}" -v "${script_dir}/script"
-  write_script "${script_dir}/script" "Second version"
-  [[ $(cabal run -v0 magix -- --cache-path "${cache}" "${script_dir}/script" 2>/dev/null) == "Second version" ]] ||
-    fail "the edited script does not run its second version"
-  assert_one_build "${cache}"
+    # An edited script replaces its build.
+    local cache script_dir
+    cache=$(mktemp -u -d -t magix-XXXXXX)
+    script_dir=$(mktemp -d -t magix-script-XXXXXX)
+    write_script "${script_dir}/script" "First version"
+    cabal run magix -- --cache-path "${cache}" -v "${script_dir}/script"
+    write_script "${script_dir}/script" "Second version"
+    [[ $(cabal run -v0 magix -- --cache-path "${cache}" "${script_dir}/script" 2>/dev/null) == "Second version" ]] ||
+        fail "the edited script does not run its second version"
+    assert_one_build "${cache}"
 }
 
 check_failed_build_keeps_previous() {
-  # A failed build of an edited script keeps the build it would supersede.
-  local cache script_dir previous
-  cache=$(mktemp -u -d -t magix-XXXXXX)
-  script_dir=$(mktemp -d -t magix-script-XXXXXX)
-  write_script "${script_dir}/script" "First version"
-  cabal run magix -- --cache-path "${cache}" -v "${script_dir}/script"
-  previous=$(echo "${cache}"/*/*-result)
-  printf '#!/usr/bin/env magix\n#!magix bash\n#!packages magix-no-such-package\necho "Broken"\n' \
-    >"${script_dir}/script"
-  if cabal run magix -- --cache-path "${cache}" "${script_dir}/script"; then
-    fail "the build of a script with a missing package succeeded"
-  fi
-  assert_one_build "${cache}"
-  [[ $(echo "${cache}"/*/*-result) == "${previous}" ]] ||
-    fail "the failed build removed the previous one"
+    # A failed build of an edited script keeps the build it would supersede.
+    local cache script_dir previous
+    cache=$(mktemp -u -d -t magix-XXXXXX)
+    script_dir=$(mktemp -d -t magix-script-XXXXXX)
+    write_script "${script_dir}/script" "First version"
+    cabal run magix -- --cache-path "${cache}" -v "${script_dir}/script"
+    previous=$(echo "${cache}"/*/*-result)
+    printf '#!/usr/bin/env magix\n#!magix bash\n#!packages magix-no-such-package\necho "Broken"\n' \
+        >"${script_dir}/script"
+    if cabal run magix -- --cache-path "${cache}" "${script_dir}/script"; then
+        fail "the build of a script with a missing package succeeded"
+    fi
+    assert_one_build "${cache}"
+    [[ $(echo "${cache}"/*/*-result) == "${previous}" ]] ||
+        fail "the failed build removed the previous one"
 }
 
 check_deploy_keeps_build() {
-  # A deploy moves the script behind the path it is invoked by: an unchanged
-  # script is not rebuilt, and its build does not need the old location.
-  local cache script_dir output
-  cache=$(mktemp -u -d -t magix-XXXXXX)
-  script_dir=$(mktemp -d -t magix-script-XXXXXX)
-  mkdir "${script_dir}/old" "${script_dir}/new"
-  write_script "${script_dir}/old/script" "Deployed"
-  ln -s "${script_dir}/old/script" "${script_dir}/script"
-  cabal run magix -- --cache-path "${cache}" -v "${script_dir}/script"
-  cp "${script_dir}/old/script" "${script_dir}/new/script"
-  rm -r "${script_dir}/old"
-  ln -sfn "${script_dir}/new/script" "${script_dir}/script"
-  output=$(cabal run -v0 magix -- --cache-path "${cache}" "${script_dir}/script" 2>&1)
-  grep -q "Script has already been built" <<<"${output}" ||
-    fail "the deployed script was rebuilt: ${output}"
-  grep -q "^Deployed$" <<<"${output}" ||
-    fail "the deployed script did not run: ${output}"
-  assert_one_build "${cache}"
+    # A deploy moves the script behind the path it is invoked by: an unchanged
+    # script is not rebuilt, and its build does not need the old location.
+    local cache script_dir output
+    cache=$(mktemp -u -d -t magix-XXXXXX)
+    script_dir=$(mktemp -d -t magix-script-XXXXXX)
+    mkdir "${script_dir}/old" "${script_dir}/new"
+    write_script "${script_dir}/old/script" "Deployed"
+    ln -s "${script_dir}/old/script" "${script_dir}/script"
+    cabal run magix -- --cache-path "${cache}" -v "${script_dir}/script"
+    cp "${script_dir}/old/script" "${script_dir}/new/script"
+    rm -r "${script_dir}/old"
+    ln -sfn "${script_dir}/new/script" "${script_dir}/script"
+    output=$(cabal run -v0 magix -- --cache-path "${cache}" "${script_dir}/script" 2>&1)
+    grep -q "Script has already been built" <<<"${output}" ||
+        fail "the deployed script was rebuilt: ${output}"
+    grep -q "^Deployed$" <<<"${output}" ||
+        fail "the deployed script did not run: ${output}"
+    assert_one_build "${cache}"
 }
 
 check_clean_stale() {
-  # Removing stale entries keeps the slots of existing scripts only.
-  local cache script_dir
-  cache=$(mktemp -u -d -t magix-XXXXXX)
-  script_dir=$(mktemp -d -t magix-script-XXXXXX)
-  write_script "${script_dir}/kept" "Kept"
-  write_script "${script_dir}/removed" "Removed"
-  cabal run magix -- --cache-path "${cache}" "${script_dir}/kept"
-  cabal run magix -- --cache-path "${cache}" "${script_dir}/removed"
-  rm "${script_dir}/removed"
-  # An entry of the layout before slots.
-  touch "${cache}/00-old.lock"
-  cabal run magix -- clean-magix-cache --stale --cache-path "${cache}" -v
-  [[ $(find "${cache}" -mindepth 1 -maxdepth 1 | wc -l) -eq 1 ]] ||
-    fail "stale entries remain in ${cache}"
-  [[ $(readlink "${cache}"/*/path) == "${script_dir}/kept" ]] ||
-    fail "the slot of the existing script was removed"
-  assert_one_build "${cache}"
+    # Removing stale entries keeps the slots of existing scripts only.
+    local cache script_dir
+    cache=$(mktemp -u -d -t magix-XXXXXX)
+    script_dir=$(mktemp -d -t magix-script-XXXXXX)
+    write_script "${script_dir}/kept" "Kept"
+    write_script "${script_dir}/removed" "Removed"
+    cabal run magix -- --cache-path "${cache}" "${script_dir}/kept"
+    cabal run magix -- --cache-path "${cache}" "${script_dir}/removed"
+    rm "${script_dir}/removed"
+    # An entry of the layout before slots.
+    touch "${cache}/00-old.lock"
+    cabal run magix -- clean-magix-cache --stale --cache-path "${cache}" -v
+    [[ $(find "${cache}" -mindepth 1 -maxdepth 1 | wc -l) -eq 1 ]] ||
+        fail "stale entries remain in ${cache}"
+    [[ $(readlink "${cache}"/*/path) == "${script_dir}/kept" ]] ||
+        fail "the slot of the existing script was removed"
+    assert_one_build "${cache}"
 }
 
 check_stale_keeps_non_ascii_path() {
-  # A slot records a non-ASCII path under any locale, and removing stale
-  # entries under another locale keeps the slot.
-  #
-  # WTNG: process-drops-non-ascii-arguments-under-c-locale (unreported). Run
-  # magix through `cabal exec` once a `process` keeping the bytes of arguments
-  # under the C locale reaches the dev shell.
-  local magix cache script_dir script b c
-  magix=$(cabal list-bin magix)
-  script_dir=$(mktemp -d -t magix-script-XXXXXX)
-  mkdir "${script_dir}/dä"
-  script="${script_dir}/dä/script"
-  write_script "${script}" "Non-ASCII"
-  for b in C C.UTF-8; do
-    for c in C C.UTF-8; do
-      cache=$(mktemp -u -d -t magix-XXXXXX)
-      magix_datadir="${PWD}" LC_ALL="${b}" "${magix}" --cache-path "${cache}" "${script}" >/dev/null
-      magix_datadir="${PWD}" LC_ALL="${c}" "${magix}" clean-magix-cache --stale --cache-path "${cache}"
-      [[ $(readlink "${cache}"/*/path) == "${script}" ]] ||
-        fail "built under ${b}, removing stale entries under ${c} removed the slot of ${script}"
+    # A slot records a non-ASCII path under any locale, and removing stale
+    # entries under another locale keeps the slot.
+    #
+    # WTNG: process-drops-non-ascii-arguments-under-c-locale (unreported). Run
+    # magix through `cabal exec` once a `process` keeping the bytes of arguments
+    # under the C locale reaches the dev shell.
+    local magix cache script_dir script b c
+    magix=$(cabal list-bin magix)
+    script_dir=$(mktemp -d -t magix-script-XXXXXX)
+    mkdir "${script_dir}/dä"
+    script="${script_dir}/dä/script"
+    write_script "${script}" "Non-ASCII"
+    for b in C C.UTF-8; do
+        for c in C C.UTF-8; do
+            cache=$(mktemp -u -d -t magix-XXXXXX)
+            magix_datadir="${PWD}" LC_ALL="${b}" "${magix}" --cache-path "${cache}" "${script}" >/dev/null
+            magix_datadir="${PWD}" LC_ALL="${c}" "${magix}" clean-magix-cache --stale --cache-path "${cache}"
+            [[ $(readlink "${cache}"/*/path) == "${script}" ]] ||
+                fail "built under ${b}, removing stale entries under ${c} removed the slot of ${script}"
+        done
     done
-  done
 }
 
 check_sample_scripts
