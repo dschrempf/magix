@@ -1,5 +1,7 @@
 # Unreleased
 
+- Read the build output of Nix as UTF-8 under any locale; magix failed
+  with `hGetContents: invalid argument` where `LANG` was unset or `C`
 - The flake's `packages.magix` (and `default`) is the executable alone
   (`justStaticExecutables`); its closure drops from 3.1 GiB to 74 MiB
 - Resolve `nixpkgs` from unprefixed directories in `$NIX_PATH` (like

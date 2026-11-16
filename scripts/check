@@ -66,6 +66,15 @@ EOF
     cabal run magix -- --cache-path "${CACHE_DIR}" -v "${SCRIPT_NAME_B}"
 }
 
+check_c_locale() {
+    # The build output of Nix is UTF-8, also under a locale without it.
+    for l in "${LANGUAGES[@]}"; do
+        echo "Building under the C locale for language ${l}"
+        LC_ALL=C cabal run magix -- --cache-path "${CACHE_DIR}" -v -f "test-scripts/${l}/hello-flake"
+    done
+}
+
 check_sample_scripts
+check_c_locale
 check_parallel_builds
 check_script_move

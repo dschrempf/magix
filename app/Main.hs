@@ -56,7 +56,8 @@ import System.Directory
   )
 import System.Exit (exitFailure, exitSuccess)
 import System.FilePath ((</>))
-import System.IO (Handle, stderr)
+import GHC.IO.Encoding (setLocaleEncoding)
+import System.IO (Handle, hSetEncoding, mkTextEncoding, stderr, stdout)
 import System.Log.Formatter (tfLogFormatter)
 import System.Log.Handler (setFormatter)
 import System.Log.Handler.Simple (GenericHandler, streamHandler)
@@ -191,8 +192,18 @@ runMagix opts = do
   logI "Build complete, executing script"
   runScript opts conf
 
+-- | Nix writes UTF-8 regardless of the locale; ROUNDTRIP passes invalid bytes
+-- through instead of failing.
+setUtf8Encoding :: IO ()
+setUtf8Encoding = do
+  enc <- mkTextEncoding "UTF-8//ROUNDTRIP"
+  setLocaleEncoding enc
+  -- The standard handles were created with the previous locale encoding.
+  forM_ [stdout, stderr] (`hSetEncoding` enc)
+
 main :: IO ()
 main = do
+  setUtf8Encoding
   cmd <- getCommand
   case cmd of
     Clean opts -> cleanCache opts
