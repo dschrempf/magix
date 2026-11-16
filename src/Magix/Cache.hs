@@ -10,29 +10,31 @@
 --
 -- Creation date: Mon Nov 16 16:23:00 2026.
 module Magix.Cache
-  ( removeCacheContents,
+  ( recordInvokedPath,
+    readInvokedPath,
+    removeCacheContents,
     removeStaleEntries,
     removeSuperseded,
   )
 where
 
 import Control.Monad (forM_, unless)
-import Data.Text (unpack)
-import Data.Text.IO (readFile)
 import Magix.Config (Config (..))
-import Magix.Paths (getInvokedPathFile)
+import Magix.Paths (getInvokedPathLink)
 import System.Directory
-  ( doesDirectoryExist,
-    doesFileExist,
+  ( createFileLink,
+    doesDirectoryExist,
     doesPathExist,
+    getSymbolicLinkTarget,
     listDirectory,
     pathIsSymbolicLink,
     removeDirectoryRecursive,
     removeFile,
+    removePathForcibly,
   )
 import System.FilePath (takeFileName, (</>))
+import System.IO.Error (tryIOError)
 import System.Log.Logger (Logger, Priority (..), logL)
-import Prelude hiding (readFile)
 
 -- | Remove a file, a symbolic link, or a directory with its contents.
 removeEntry :: FilePath -> IO ()
@@ -50,6 +52,22 @@ listEntries dir = map (dir </>) <$> listDirectory dir
 removeCacheContents :: FilePath -> IO ()
 removeCacheContents cacheDir = listEntries cacheDir >>= mapM_ removeEntry
 
+-- | Record the path the script is invoked by in its slot, as a symbolic link:
+-- the link keeps the bytes of the path under any locale, and dangles once the
+-- script is gone.
+recordInvokedPath :: FilePath -> FilePath -> IO ()
+recordInvokedPath slotDir invokedPath = do
+  current <- readInvokedPath slotDir
+  unless (current == Just invokedPath) $ do
+    let link = getInvokedPathLink slotDir
+    removePathForcibly link
+    createFileLink invokedPath link
+
+-- | The path recorded by `recordInvokedPath`, if any.
+readInvokedPath :: FilePath -> IO (Maybe FilePath)
+readInvokedPath slotDir =
+  either (const Nothing) Just <$> tryIOError (getSymbolicLinkTarget $ getInvokedPathLink slotDir)
+
 data CacheEntry
   = -- | A slot, with the path its script is invoked by.
     Slot !FilePath
@@ -60,10 +78,8 @@ getCacheEntry :: FilePath -> IO CacheEntry
 getCacheEntry entry = do
   isDir <- doesDirectoryExist entry
   isLnk <- pathIsSymbolicLink entry
-  let pathFile = getInvokedPathFile entry
-  hasPathFile <- if isDir && not isLnk then doesFileExist pathFile else pure False
-  if hasPathFile
-    then Slot . unpack <$> readFile pathFile
+  if isDir && not isLnk
+    then maybe NoSlot Slot <$> readInvokedPath entry
     else pure NoSlot
 
 -- | Remove the slots whose script is gone, and every entry that is no slot.
@@ -90,7 +106,7 @@ removeSuperseded logger cfg = do
       keep =
         map
           takeFileName
-          [cfg.lockPath, cfg.invokedPathFile, cfg.buildDir, cfg.resultLinkPath]
+          [cfg.lockPath, cfg.invokedPathLink, cfg.buildDir, cfg.resultLinkPath]
   entries <- listEntries cfg.slotDir
   forM_ entries $ \entry ->
     unless (takeFileName entry `elem` keep) $ do

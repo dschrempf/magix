@@ -140,7 +140,7 @@ check_clean_stale() {
   cabal run magix -- clean-magix-cache --stale --cache-path "${cache}" -v
   [[ $(find "${cache}" -mindepth 1 -maxdepth 1 | wc -l) -eq 1 ]] ||
     fail "stale entries remain in ${cache}"
-  [[ $(cat "${cache}"/*/path) == "${script_dir}/kept" ]] ||
+  [[ $(readlink "${cache}"/*/path) == "${script_dir}/kept" ]] ||
     fail "the slot of the existing script was removed"
   assert_one_build "${cache}"
 }

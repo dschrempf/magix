@@ -19,10 +19,10 @@ module Magix.Build
 where
 
 import Control.Monad (unless, when)
-import Data.Text (Text, pack)
+import Data.Text (Text)
 import Data.Text.IO (writeFile)
 import Magix.BuildMode (BuildMode (..))
-import Magix.Cache (removeSuperseded)
+import Magix.Cache (recordInvokedPath, removeSuperseded)
 import Magix.Config (Config (..))
 import Magix.Expression (getFlakeWrapper)
 import System.Directory
@@ -67,8 +67,8 @@ build logger cfg expr = do
       logE = logL logger ERROR
   logD "Removing previous build"
   removeBuild logger cfg
-  logD $ "Recording invoked path: " <> cfg.invokedPathFile
-  writeFile cfg.invokedPathFile (pack cfg.invokedPath)
+  logD $ "Recording invoked path: " <> cfg.invokedPathLink
+  recordInvokedPath cfg.slotDir cfg.invokedPath
   logD $ "Recreating the build directory: " <> cfg.buildDir
   createDirectoryIfMissing True cfg.buildDir
   logD $ "Copying script to build directory: " <> cfg.buildDir </> "script"

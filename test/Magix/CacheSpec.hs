@@ -15,10 +15,10 @@ module Magix.CacheSpec
 where
 
 import Data.List (sort)
-import Magix.Cache (removeStaleEntries, removeSuperseded)
+import Magix.Cache (recordInvokedPath, removeStaleEntries, removeSuperseded)
 import Magix.Config (Config (..))
 import Magix.Hash (getSlotHash)
-import Magix.Paths (getInvokedPathFile, getSlotDir)
+import Magix.Paths (getSlotDir)
 import Magix.Tools (getRandomFakeConfig)
 import System.Directory (createDirectory, createDirectoryIfMissing, listDirectory)
 import System.FilePath (takeDirectory, takeFileName, (</>))
@@ -31,7 +31,7 @@ createSlot :: FilePath -> FilePath -> IO FilePath
 createSlot cacheDir invokedPath = do
   let slotDir = getSlotDir cacheDir (getSlotHash invokedPath) (takeFileName invokedPath)
   createDirectoryIfMissing True slotDir
-  writeFile (getInvokedPathFile slotDir) invokedPath
+  recordInvokedPath slotDir invokedPath
   pure slotDir
 
 spec :: Spec
@@ -41,7 +41,7 @@ spec = do
       logger <- getLogger "test"
       c <- getRandomFakeConfig
       writeFile c.lockPath ""
-      writeFile c.invokedPathFile c.invokedPath
+      recordInvokedPath c.slotDir c.invokedPath
       createDirectory c.buildDir
       createSymbolicLink "store" c.resultLinkPath
       createDirectory $ c.slotDir </> "00-build"
@@ -50,7 +50,7 @@ spec = do
       entries <- listDirectory c.slotDir
       sort entries
         `shouldBe` sort
-          (map takeFileName [c.lockPath, c.invokedPathFile, c.buildDir, c.resultLinkPath])
+          (map takeFileName [c.lockPath, c.invokedPathLink, c.buildDir, c.resultLinkPath])
 
   describe "removeStaleEntries" $ do
     it "keeps slots of existing scripts and removes everything else" $ do

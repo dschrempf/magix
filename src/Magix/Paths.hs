@@ -12,7 +12,7 @@
 module Magix.Paths
   ( getSlotDir,
     getLockPath,
-    getInvokedPathFile,
+    getInvokedPathLink,
     getBuildDir,
     getBuildExprPath,
     getResultLinkPath,
@@ -45,9 +45,9 @@ getSlotDir cacheDir slotHash name =
 getLockPath :: FilePath -> FilePath
 getLockPath slotDir = slotDir </> "lock"
 
--- | File recording the path the script is invoked by.
-getInvokedPathFile :: FilePath -> FilePath
-getInvokedPathFile slotDir = slotDir </> "path"
+-- | Symbolic link to the path the script is invoked by; see `recordInvokedPath`.
+getInvokedPathLink :: FilePath -> FilePath
+getInvokedPathLink slotDir = slotDir </> "path"
 
 getBuildDir :: FilePath -> ByteString -> FilePath
 getBuildDir slotDir hash = slotDir </> showHash hash <> "-build"

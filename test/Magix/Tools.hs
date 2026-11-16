@@ -32,7 +32,7 @@ import Magix.Language.Directives (LanguageDirectives, getLanguage)
 import Magix.Paths
   ( getBuildDir,
     getBuildExprPath,
-    getInvokedPathFile,
+    getInvokedPathLink,
     getLockPath,
     getResultLinkPath,
     getSlotDir,
@@ -79,7 +79,7 @@ getRandomFakeConfig = do
         cacheDir = cacheDir,
         slotDir = slotDir,
         lockPath = getLockPath slotDir,
-        invokedPathFile = getInvokedPathFile slotDir,
+        invokedPathLink = getInvokedPathLink slotDir,
         buildDir = buildDir,
         buildExprPath = getBuildExprPath buildDir,
         resultLinkPath = getResultLinkPath slotDir hsh

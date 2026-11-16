@@ -31,7 +31,7 @@ import Magix.Options (Options (..))
 import Magix.Paths
   ( getBuildDir,
     getBuildExprPath,
-    getInvokedPathFile,
+    getInvokedPathLink,
     getLockPath,
     getResultLinkPath,
     getSlotDir,
@@ -57,8 +57,8 @@ data Config = Config
     slotDir :: !FilePath,
     -- | File used for locking the slot.
     lockPath :: !FilePath,
-    -- | File recording the invoked path, for removing stale slots.
-    invokedPathFile :: !FilePath,
+    -- | Symbolic link to the invoked path, for removing stale slots.
+    invokedPathLink :: !FilePath,
     -- | Directory containing the Nix expression building the result.
     buildDir :: !FilePath,
     -- | The Nix expression building the result (always default.nix).
@@ -105,7 +105,7 @@ getConfig opts scriptContents mDirectiveRef = do
             }
       slotDir = getSlotDir cacheDir (getSlotHash invokedPath) scriptName
       lockPath = getLockPath slotDir
-      invokedPathFile = getInvokedPathFile slotDir
+      invokedPathLink = getInvokedPathLink slotDir
       buildDir = getBuildDir slotDir magixHash
       buildExprPath = getBuildExprPath buildDir
       resultLinkPath = getResultLinkPath slotDir magixHash

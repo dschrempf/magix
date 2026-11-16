@@ -55,7 +55,7 @@ Each language has a `Template.nix` file (declared as `data-files` in the cabal f
 
 ### Build & Cache (`src/Magix/Build.hs`, `src/Magix/Cache.hs`, `src/Magix/Config.hs`, `src/Magix/Hash.hs`, `src/Magix/Paths.hs`)
 
-The cache holds one slot per path a script is invoked by (absolute, symlinks unresolved), named by a hash of that path (`getSlotHash`). A slot holds a `lock`, a `path` file recording the invoked path, and one build named by the content hash (`getMagixHash`): `<hash>-build/` and the `<hash>-result` symlink. `Config` holds these paths. `getBuildStatus` checks whether the result symlink exists. `build` writes the generated Nix expression to disk, calls `nix-build`, and then removes the builds it supersedes (`removeSuperseded`). The lock (`filelock`) serializes builds of a slot; the result is resolved to its store path while holding it. `clean-magix-cache --stale` removes slots whose invoked path is gone, and every entry that is no slot.
+The cache holds one slot per path a script is invoked by (absolute, symlinks unresolved), named by a hash of that path (`getSlotHash`). A slot holds a `lock`, a `path` symlink to the invoked path, and one build named by the content hash (`getMagixHash`): `<hash>-build/` and the `<hash>-result` symlink. `Config` holds these paths. `getBuildStatus` checks whether the result symlink exists. `build` writes the generated Nix expression to disk, calls `nix-build`, and then removes the builds it supersedes (`removeSuperseded`). The lock (`filelock`) serializes builds of a slot; the result is resolved to its store path while holding it. `clean-magix-cache --stale` removes slots whose invoked path is gone, and every entry that is no slot.
 
 ### Adding a New Language
 
