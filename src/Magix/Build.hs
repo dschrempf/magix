@@ -47,6 +47,8 @@ getBuildStatus c = do
   resultDirExists <- doesDirectoryExist c.resultLinkPath
   pure $ if resultDirExists then HasBeenBuilt else NeedToBuild
 
+-- | Remove the build of the current contents, left by a forced or failed build;
+-- `removeSuperseded` removes the others.
 removeBuild :: Logger -> Config -> IO ()
 removeBuild logger cfg = do
   let logD = logL logger DEBUG
@@ -65,7 +67,7 @@ build :: Logger -> Config -> Text -> IO ()
 build logger cfg expr = do
   let logD = logL logger DEBUG
       logE = logL logger ERROR
-  logD "Removing previous build"
+  logD "Removing an earlier build of the same contents, if any"
   removeBuild logger cfg
   logD $ "Recording invoked path: " <> cfg.invokedPathLink
   recordInvokedPath cfg.slotDir cfg.invokedPath
