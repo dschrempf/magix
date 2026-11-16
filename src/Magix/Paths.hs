@@ -10,7 +10,8 @@
 --
 -- Creation date: Mon Oct 21 17:06:03 2024.
 module Magix.Paths
-  ( getSlotDir,
+  ( getCacheLockPath,
+    getSlotDir,
     getLockPath,
     getInvokedPathLink,
     getBuildDir,
@@ -32,6 +33,10 @@ replaceProblematicChars :: Char -> Char
 replaceProblematicChars c
   | isAlphaNum c = c
   | otherwise = '-'
+
+-- | The lock builds hold shared, and cleaning the cache exclusively.
+getCacheLockPath :: FilePath -> FilePath
+getCacheLockPath cacheDir = cacheDir </> "lock"
 
 -- | The directory holding the builds of one script, given the cache directory,
 -- the slot hash, and the script name.

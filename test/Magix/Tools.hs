@@ -32,6 +32,7 @@ import Magix.Language.Directives (LanguageDirectives, getLanguage)
 import Magix.Paths
   ( getBuildDir,
     getBuildExprPath,
+    getCacheLockPath,
     getInvokedPathLink,
     getLockPath,
     getResultLinkPath,
@@ -77,6 +78,7 @@ getRandomFakeConfig = do
         buildMode = ChannelBuild (tmp </> "fakeNixpkgsPath"),
         magixHash = hsh,
         cacheDir = cacheDir,
+        cacheLockPath = getCacheLockPath cacheDir,
         slotDir = slotDir,
         lockPath = getLockPath slotDir,
         invokedPathLink = getInvokedPathLink slotDir,

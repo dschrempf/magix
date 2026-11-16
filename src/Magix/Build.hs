@@ -113,13 +113,18 @@ build logger cfg expr = do
     exitFailure
   removeSuperseded logger cfg
 
+-- | Run the action holding the lock of the slot, and the cache lock shared:
+-- builds of different slots run in parallel, and cleaning the cache waits for
+-- them.
 withBuildLock :: Logger -> Config -> IO a -> IO a
 withBuildLock logger cfg action = do
-  createDirectoryIfMissing True cfg.slotDir
   let logD = logL logger DEBUG
-  logD "Acquiring lock"
-  x <- withFileLock cfg.lockPath Exclusive $ const action
-  logD "Released lock"
+  createDirectoryIfMissing True cfg.cacheDir
+  logD "Acquiring locks"
+  x <- withFileLock cfg.cacheLockPath Shared $ \_ -> do
+    createDirectoryIfMissing True cfg.slotDir
+    withFileLock cfg.lockPath Exclusive $ const action
+  logD "Released locks"
   pure x
 
 -- | The store path of the build result. Call it holding the lock: a rebuild of

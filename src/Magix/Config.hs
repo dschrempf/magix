@@ -31,6 +31,7 @@ import Magix.Options (Options (..))
 import Magix.Paths
   ( getBuildDir,
     getBuildExprPath,
+    getCacheLockPath,
     getInvokedPathLink,
     getLockPath,
     getResultLinkPath,
@@ -53,6 +54,8 @@ data Config = Config
     magixHash :: !ByteString,
     -- | Cache directory containing one slot per invoked path.
     cacheDir :: !FilePath,
+    -- | See `getCacheLockPath`.
+    cacheLockPath :: !FilePath,
     -- | Directory holding the build of the script; a rebuild replaces it.
     slotDir :: !FilePath,
     -- | File used for locking the slot.
@@ -103,6 +106,7 @@ getConfig opts scriptContents mDirectiveRef = do
             { buildMode = buildMode,
               scriptContents = scriptContents
             }
+      cacheLockPath = getCacheLockPath cacheDir
       slotDir = getSlotDir cacheDir (getSlotHash invokedPath) scriptName
       lockPath = getLockPath slotDir
       invokedPathLink = getInvokedPathLink slotDir

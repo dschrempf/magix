@@ -14,7 +14,9 @@ module Magix.CacheSpec
   )
 where
 
+import Control.Concurrent (forkIO, newEmptyMVar, putMVar, takeMVar, threadDelay)
 import Data.List (sort)
+import Magix.Build (withBuildLock)
 import Magix.Cache
   ( readInvokedPath,
     recordInvokedPath,
@@ -26,11 +28,18 @@ import Magix.Config (Config (..))
 import Magix.Hash (getSlotHash)
 import Magix.Paths (getSlotDir)
 import Magix.Tools (getRandomFakeConfig)
-import System.Directory (createDirectory, createDirectoryIfMissing, doesPathExist, listDirectory)
+import System.Directory
+  ( createDirectory,
+    createDirectoryIfMissing,
+    doesDirectoryExist,
+    doesPathExist,
+    listDirectory,
+  )
 import System.FilePath (takeDirectory, takeFileName, (</>))
-import System.Log.Logger (getLogger)
+import System.Log.Logger (Logger, getLogger)
 import System.Posix (createSymbolicLink)
-import Test.Hspec (Spec, describe, it, shouldBe, shouldReturn)
+import System.Timeout (timeout)
+import Test.Hspec (Expectation, Spec, describe, it, shouldBe, shouldReturn)
 
 -- | Create a slot for a script invoked by the given path, which is left alone.
 createSlot :: FilePath -> FilePath -> IO FilePath
@@ -44,6 +53,26 @@ createSlot cacheDir invokedPath = do
 -- escaped character under every locale.
 nonUtf8Path :: FilePath -> FilePath
 nonUtf8Path dir = dir </> "d\xDCE4"
+
+-- | Cleaning waits for a build holding the locks, here at the start of a first
+-- build: a slot without a recorded path, which cleaning removes afterwards.
+waitsForBuild :: (Logger -> FilePath -> IO ()) -> Expectation
+waitsForBuild clean = do
+  logger <- getLogger "test"
+  c <- getRandomFakeConfig
+  building <- newEmptyMVar
+  finish <- newEmptyMVar
+  cleaned <- newEmptyMVar
+  _ <- forkIO $ withBuildLock logger c $ putMVar building () >> takeMVar finish
+  timeout second (takeMVar building) `shouldReturn` Just ()
+  _ <- forkIO $ clean logger c.cacheDir >> putMVar cleaned ()
+  threadDelay $ second `div` 10
+  doesDirectoryExist c.slotDir `shouldReturn` True
+  putMVar finish ()
+  timeout second (takeMVar cleaned) `shouldReturn` Just ()
+  doesDirectoryExist c.slotDir `shouldReturn` False
+  where
+    second = 1000000
 
 spec :: Spec
 spec = do
@@ -72,10 +101,22 @@ spec = do
 
   describe "removeCacheContents" $ do
     it "accepts a missing cache directory" $ do
+      logger <- getLogger "test"
       c <- getRandomFakeConfig
       let cacheDir = takeDirectory c.cacheDir </> "missing"
-      removeCacheContents cacheDir
+      removeCacheContents logger cacheDir
       doesPathExist cacheDir `shouldReturn` False
+
+    it "removes everything but the cache lock" $ do
+      logger <- getLogger "test"
+      c <- getRandomFakeConfig
+      _ <- createSlot c.cacheDir $ takeDirectory c.cacheDir </> "missing"
+      writeFile (c.cacheDir </> "00-old.lock") ""
+      writeFile c.cacheLockPath ""
+      removeCacheContents logger c.cacheDir
+      listDirectory c.cacheDir `shouldReturn` [takeFileName c.cacheLockPath]
+
+    it "waits for a running build" $ waitsForBuild removeCacheContents
 
   describe "removeStaleEntries" $ do
     it "accepts a missing cache directory" $ do
@@ -101,9 +142,10 @@ spec = do
       createSymbolicLink "store" $ c.cacheDir </> "00-old-result"
       writeFile (c.cacheDir </> "00-old.lock") ""
       -- `c.slotDir` exists too, without a recorded path.
+      writeFile c.cacheLockPath ""
       removeStaleEntries logger c.cacheDir
       entries <- listDirectory c.cacheDir
-      entries `shouldBe` [takeFileName kept]
+      sort entries `shouldBe` sort (map takeFileName [kept, c.cacheLockPath])
 
     it "keeps the slot of an existing script whose path is no valid UTF-8" $ do
       logger <- getLogger "test"
@@ -113,4 +155,6 @@ spec = do
       kept <- createSlot c.cacheDir present
       removeStaleEntries logger c.cacheDir
       entries <- listDirectory c.cacheDir
-      entries `shouldBe` [takeFileName kept]
+      sort entries `shouldBe` sort (map takeFileName [kept, c.cacheLockPath])
+
+    it "waits for a running build" $ waitsForBuild removeStaleEntries

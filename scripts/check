@@ -156,7 +156,7 @@ check_clean_stale() {
     # An entry of the layout before slots.
     touch "${cache}/00-old.lock"
     cabal run magix -- clean-magix-cache --stale --cache-path "${cache}" -v
-    [[ $(find "${cache}" -mindepth 1 -maxdepth 1 | wc -l) -eq 1 ]] ||
+    [[ $(find "${cache}" -mindepth 1 -maxdepth 1 ! -name lock | wc -l) -eq 1 ]] ||
         fail "stale entries remain in ${cache}"
     [[ $(readlink "${cache}"/*/path) == "${script_dir}/kept" ]] ||
         fail "the slot of the existing script was removed"

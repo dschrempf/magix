@@ -127,7 +127,7 @@ cleanCache opts = do
   case opts.cleanMode of
     RemoveAll -> do
       logI $ "Cleaning Magix cache: " <> cacheDir
-      removeCacheContents cacheDir
+      removeCacheContents logger cacheDir
     RemoveStale -> do
       logI $ "Removing stale entries from Magix cache: " <> cacheDir
       removeStaleEntries logger cacheDir

@@ -9,6 +9,7 @@
 - Execute the store path of the build, resolved while holding the lock
 - `clean-magix-cache` no longer fails before the first build created the
   cache directory
+- `clean-magix-cache` waits for running builds instead of removing their files
 - Read the build output of Nix as UTF-8 under any locale; magix failed
   with `hGetContents: invalid argument` where `LANG` was unset or `C`
 - The flake's `packages.magix` (and `default`) is the executable alone

@@ -18,9 +18,10 @@ module Magix.Cache
   )
 where
 
-import Control.Monad (forM_, unless)
+import Control.Exception (bracket)
+import Control.Monad (forM_, unless, when)
 import Magix.Config (Config (..))
-import Magix.Paths (getInvokedPathLink)
+import Magix.Paths (getCacheLockPath, getInvokedPathLink)
 import System.Directory
   ( createFileLink,
     doesDirectoryExist,
@@ -32,6 +33,7 @@ import System.Directory
     removeFile,
     removePathForcibly,
   )
+import System.FileLock (SharedExclusive (..), lockFile, tryLockFile, unlockFile)
 import System.FilePath (takeFileName, (</>))
 import System.IO.Error (tryIOError)
 import System.Log.Logger (Logger, Priority (..), logL)
@@ -48,15 +50,27 @@ removeEntry path = do
 listEntries :: FilePath -> IO [FilePath]
 listEntries dir = map (dir </>) <$> listDirectory dir
 
--- | The entries of the cache directory; none before the first build creates it.
-listCacheEntries :: FilePath -> IO [FilePath]
-listCacheEntries cacheDir = do
+-- | Run the action on the entries of the cache directory but its lock, holding
+-- that lock exclusively: it waits for running builds, and builds wait for it.
+-- Before the first build creates the cache directory, there is nothing to do.
+withCacheEntries :: Logger -> FilePath -> ([FilePath] -> IO ()) -> IO ()
+withCacheEntries logger cacheDir action = do
   exists <- doesDirectoryExist cacheDir
-  if exists then listEntries cacheDir else pure []
+  when exists $ bracket acquire unlockFile $ \_ ->
+    filter (/= lockPath) <$> listEntries cacheDir >>= action
+  where
+    lockPath = getCacheLockPath cacheDir
+    acquire =
+      tryLockFile lockPath Exclusive >>= \case
+        Just l -> pure l
+        Nothing -> do
+          logL logger INFO "Waiting for running builds"
+          lockFile lockPath Exclusive
 
 -- | Remove everything in the cache directory.
-removeCacheContents :: FilePath -> IO ()
-removeCacheContents cacheDir = listCacheEntries cacheDir >>= mapM_ removeEntry
+removeCacheContents :: Logger -> FilePath -> IO ()
+removeCacheContents logger cacheDir =
+  withCacheEntries logger cacheDir $ mapM_ removeEntry
 
 -- | Record the path the script is invoked by in its slot, as a symbolic link:
 -- the link keeps the bytes of the path under any locale, and dangles once the
@@ -92,8 +106,7 @@ getCacheEntry entry = do
 removeStaleEntries :: Logger -> FilePath -> IO ()
 removeStaleEntries logger cacheDir = do
   let logD = logL logger DEBUG
-  entries <- listCacheEntries cacheDir
-  forM_ entries $ \entry ->
+  withCacheEntries logger cacheDir $ \entries -> forM_ entries $ \entry ->
     getCacheEntry entry >>= \case
       Slot invokedPath -> do
         -- Follows symbolic links, so a dangling link is stale.
