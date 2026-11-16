@@ -167,9 +167,9 @@ check_stale_keeps_non_ascii_path() {
     # A slot records a non-ASCII path under any locale, and removing stale
     # entries under another locale keeps the slot.
     #
-    # WTNG: process-drops-non-ascii-arguments-under-c-locale (unreported). Run
-    # magix through `cabal exec` once a `process` keeping the bytes of arguments
-    # under the C locale reaches the dev shell.
+    # WTNG: posix-treat-arguments-using-filesystem-encoding
+    # (haskell/process#388). Run magix through `cabal exec` once a `process`
+    # carrying that fix reaches the dev shell.
     local magix cache script_dir script b c
     magix=$(cabal list-bin magix)
     script_dir=$(mktemp -d -t magix-script-XXXXXX)

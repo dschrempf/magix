@@ -8,7 +8,5 @@ From closure measurements of two NixOS systems that install magix
 3. `flake-template-drops-flake-utils`.
 
 `cache-evicts-by-age-or-count`, `parse-error-shows-the-header-alone`,
-`directive-tests-cover-every-language`,
-`process-drops-non-ascii-arguments-under-c-locale`,
-`get-config-has-unit-tests` and `format-script-formats-all-code` have no
-rank yet.
+`directive-tests-cover-every-language`, `get-config-has-unit-tests` and
+`format-script-formats-all-code` have no rank yet.
