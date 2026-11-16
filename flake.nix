@@ -39,9 +39,9 @@
           theseHpkgsDev = builtins.mapAttrs (_: x: hlib.doBenchmark x) theseHpkgs;
         in
         {
-          packages = theseHpkgs // {
-            default = theseHpkgs.magix;
-            magix = theseHpkgs.magix;
+          packages = rec {
+            default = magix;
+            magix = hlib.justStaticExecutables theseHpkgs.magix;
           };
 
           devShells.default = hpkgs.shellFor {
