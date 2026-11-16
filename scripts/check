@@ -145,6 +145,27 @@ check_clean_stale() {
   assert_one_build "${cache}"
 }
 
+check_stale_keeps_non_ascii_path() {
+  # A slot records a non-ASCII path under any locale, and removing stale
+  # entries under another locale keeps the slot. Run magix directly: under the
+  # C locale, `cabal exec` drops the non-ASCII bytes of its arguments.
+  local magix cache script_dir script b c
+  magix=$(cabal list-bin magix)
+  script_dir=$(mktemp -d -t magix-script-XXXXXX)
+  mkdir "${script_dir}/dä"
+  script="${script_dir}/dä/script"
+  write_script "${script}" "Non-ASCII"
+  for b in C C.UTF-8; do
+    for c in C C.UTF-8; do
+      cache=$(mktemp -u -d -t magix-XXXXXX)
+      magix_datadir="${PWD}" LC_ALL="${b}" "${magix}" --cache-path "${cache}" "${script}" >/dev/null
+      magix_datadir="${PWD}" LC_ALL="${c}" "${magix}" clean-magix-cache --stale --cache-path "${cache}"
+      [[ $(readlink "${cache}"/*/path) == "${script}" ]] ||
+        fail "built under ${b}, removing stale entries under ${c} removed the slot of ${script}"
+    done
+  done
+}
+
 check_sample_scripts
 check_c_locale
 check_parallel_builds
@@ -152,3 +173,4 @@ check_script_move
 check_rebuild_replaces_superseded
 check_deploy_keeps_build
 check_clean_stale
+check_stale_keeps_non_ascii_path
