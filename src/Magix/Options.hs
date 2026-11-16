@@ -13,6 +13,7 @@ module Magix.Options
   ( Verbosity (..),
     Rebuild (..),
     Command (..),
+    CleanMode (..),
     CleanOptions (..),
     Options (..),
     getCommand,
@@ -65,9 +66,16 @@ data Verbosity = Info | Debug deriving (Eq, Show)
 
 data Rebuild = ReuseBuildIfAvailable | ForceBuild deriving (Eq, Show)
 
+data CleanMode
+  = RemoveAll
+  | -- | Remove the slots whose script is gone, and every entry that is no slot.
+    RemoveStale
+  deriving (Eq, Show)
+
 data CleanOptions = CleanOptions
   { verbosity :: !Verbosity,
-    cachePath :: !(Maybe FilePath)
+    cachePath :: !(Maybe FilePath),
+    cleanMode :: !CleanMode
   }
   deriving (Eq, Show, Generic)
 
@@ -108,7 +116,16 @@ pRawCommand = pCleanCommand <|> pRawRun
     pRawRun = RawRun <$> pRawOptions
 
 pCleanOptions :: Parser CleanOptions
-pCleanOptions = CleanOptions <$> pLogLevel <*> pCachePath
+pCleanOptions = CleanOptions <$> pLogLevel <*> pCachePath <*> pCleanMode
+
+pCleanMode :: Parser CleanMode
+pCleanMode =
+  flag
+    RemoveAll
+    RemoveStale
+    ( long "stale"
+        <> help "Remove only the builds of scripts that are gone, and entries of an older cache layout"
+    )
 
 pRawOptions :: Parser RawOptions
 pRawOptions =

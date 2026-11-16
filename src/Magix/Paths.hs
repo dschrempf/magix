@@ -10,8 +10,10 @@
 --
 -- Creation date: Mon Oct 21 17:06:03 2024.
 module Magix.Paths
-  ( getBuildDir,
+  ( getSlotDir,
     getLockPath,
+    getInvokedPathFile,
+    getBuildDir,
     getBuildExprPath,
     getResultLinkPath,
   )
@@ -31,21 +33,27 @@ replaceProblematicChars c
   | isAlphaNum c = c
   | otherwise = '-'
 
-getCommonPrefix :: FilePath -> ByteString -> String -> FilePath
-getCommonPrefix cacheDir hash name =
+-- | The directory holding the builds of one script, given the cache directory,
+-- the slot hash, and the script name.
+getSlotDir :: FilePath -> ByteString -> String -> FilePath
+getSlotDir cacheDir slotHash name =
   cacheDir
-    </> showHash hash
+    </> showHash slotHash
       <> "-"
       <> map replaceProblematicChars name
 
-getLockPath :: FilePath -> ByteString -> String -> FilePath
-getLockPath cacheDir hash name = getCommonPrefix cacheDir hash name <> ".lock"
+getLockPath :: FilePath -> FilePath
+getLockPath slotDir = slotDir </> "lock"
 
-getBuildDir :: FilePath -> ByteString -> String -> FilePath
-getBuildDir cacheDir hash name = getCommonPrefix cacheDir hash name <> "-build"
+-- | File recording the path the script is invoked by.
+getInvokedPathFile :: FilePath -> FilePath
+getInvokedPathFile slotDir = slotDir </> "path"
+
+getBuildDir :: FilePath -> ByteString -> FilePath
+getBuildDir slotDir hash = slotDir </> showHash hash <> "-build"
 
 getBuildExprPath :: FilePath -> FilePath
 getBuildExprPath buildDir = buildDir </> "default.nix"
 
-getResultLinkPath :: FilePath -> ByteString -> String -> FilePath
-getResultLinkPath cacheDir hash name = getCommonPrefix cacheDir hash name <> "-result"
+getResultLinkPath :: FilePath -> ByteString -> FilePath
+getResultLinkPath slotDir hash = slotDir </> showHash hash <> "-result"

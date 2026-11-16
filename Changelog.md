@@ -1,5 +1,12 @@
 # Unreleased
 
+- Keep one build per script: the cache holds a slot per path a script is
+  invoked by, and a build removes the build it supersedes. A deploy that moves
+  an unchanged script (a new store path behind the same invoked path) no
+  longer rebuilds it
+- Add `clean-magix-cache --stale`, removing the slots whose script is gone and
+  every entry of the previous cache layout; run it once after upgrading
+- Execute the store path of the build, resolved while holding the lock
 - Read the build output of Nix as UTF-8 under any locale; magix failed
   with `hGetContents: invalid argument` where `LANG` was unset or `C`
 - The flake's `packages.magix` (and `default`) is the executable alone

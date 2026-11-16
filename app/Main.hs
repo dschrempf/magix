@@ -21,6 +21,7 @@ import Data.Text (unpack)
 import Data.Text.Encoding (decodeUtf8')
 import Magix
   ( BuildStatus (..),
+    CleanMode (..),
     CleanOptions (..),
     Command (..),
     Config,
@@ -36,6 +37,9 @@ import Magix
     getConfig,
     getDirectives,
     getNixExpression,
+    removeCacheContents,
+    removeStaleEntries,
+    resolveResult,
     runScript,
     withBuildLock,
   )
@@ -47,15 +51,7 @@ import System.Console.ANSI
     SGR (Reset, SetColor, SetConsoleIntensity),
     setSGRCode,
   )
-import System.Directory
-  ( doesDirectoryExist,
-    listDirectory,
-    pathIsSymbolicLink,
-    removeDirectoryRecursive,
-    removeFile,
-  )
 import System.Exit (exitFailure, exitSuccess)
-import System.FilePath ((</>))
 import GHC.IO.Encoding (setLocaleEncoding)
 import System.IO (Handle, hSetEncoding, mkTextEncoding, stderr, stdout)
 import System.Log.Formatter (tfLogFormatter)
@@ -128,21 +124,15 @@ cleanCache opts = do
   logger <- setupLogger opts.verbosity
   let logI = logL logger INFO
   cacheDir <- getCacheDir opts.cachePath
-  logI $ "Cleaning Magix cache: " <> cacheDir
-  removeDirectoryContents cacheDir
+  case opts.cleanMode of
+    RemoveAll -> do
+      logI $ "Cleaning Magix cache: " <> cacheDir
+      removeCacheContents cacheDir
+    RemoveStale -> do
+      logI $ "Removing stale entries from Magix cache: " <> cacheDir
+      removeStaleEntries logger cacheDir
   logI "Done"
   exitSuccess
-  where
-    removeDirectoryContents :: FilePath -> IO ()
-    removeDirectoryContents dir = do
-      contents <- listDirectory dir
-      forM_ contents $ \name -> do
-        let fullPath = dir </> name
-        isDir <- doesDirectoryExist fullPath
-        isLnk <- pathIsSymbolicLink fullPath
-        if isDir && not isLnk
-          then removeDirectoryRecursive fullPath
-          else removeFile fullPath
 
 runMagix :: Options -> IO ()
 runMagix opts = do
@@ -174,23 +164,24 @@ runMagix opts = do
   conf <- getConfig opts scriptBytes directives.nixpkgsRef
   logD $ "Magix configuration is " <> show conf
 
-  case forceBuild opts of
-    ForceBuild -> do
-      logI "Forcing build"
-      withBuildLock logger conf $ newBuild conf directives.language
-    ReuseBuildIfAvailable -> do
-      logD "Reusing build if available"
-      logD "Checking build status"
-      withBuildLock logger conf $ do
+  result <- withBuildLock logger conf $ do
+    case forceBuild opts of
+      ForceBuild -> do
+        logI "Forcing build"
+        newBuild conf directives.language
+      ReuseBuildIfAvailable -> do
+        logD "Reusing build if available"
+        logD "Checking build status"
         buildStatus <- getBuildStatus conf
         case buildStatus of
           HasBeenBuilt ->
             logI "Script has already been built"
           NeedToBuild ->
             logI "Need to build" >> newBuild conf directives.language
+    resolveResult conf
 
-  logI "Build complete, executing script"
-  runScript opts conf
+  logI $ "Build complete, executing script: " <> result
+  runScript opts conf result
 
 -- | Nix writes UTF-8 regardless of the locale; ROUNDTRIP passes invalid bytes
 -- through instead of failing.
