@@ -20,3 +20,10 @@ Open:
   silence is not mistaken for a hang.
 - `clean-magix-cache` logs at `INFO` too ("Cleaning Magix cache", "Done"):
   a command run by hand may keep them, a timer does not need them.
+
+Outcome: done on 2026-11-17, branch `fix/a-run-logs-errors-alone`. The
+threshold stays `INFO`, and `INFO` now means a step that takes time or waits:
+a cached run logs at `DEBUG` alone, so it prints only errors; a build logs
+"Building script: <path>" (was "Need to build"), and `-f` "Forcing build".
+`clean-magix-cache` logs "Waiting for running builds" alone at `INFO`. No
+new flag. Tests in `Magix.MainSpec` pin both.
