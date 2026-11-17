@@ -15,12 +15,13 @@ The old slot's result link keeps its build rooted until both:
 Before the cache slots (`rebuild-replaces-the-superseded-build`), every deploy
 of every script added a build this way; this is the part they leave.
 
-Open:
+A consumer does (2026-11-17): a system configuration installs a program of
+nixpkgs as a magix script, and a wrapper of its own runs it by its store
+path, which changes with an update of nixpkgs or magix. It took the system's way: a
+daily user timer runs `clean-magix-cache --stale`, so an old slot goes once
+the garbage collector took its script.
 
-- Does a consumer run a magix script by its store path? `~/nix/config` is
-  unchecked.
-- Fix in magix, or in the system: a timer running `clean-magix-cache --stale`
-  after garbage collection needs no change here. In magix, a build could
-  remove stale slots after it succeeds, but cleaning holds the cache lock
-  exclusively, which a build holding it shared cannot take; it would have to
-  try the lock and skip when another build runs.
+Open: whether magix cleans stale slots itself, so a consumer needs no
+timer. A build could remove them after it succeeds, but cleaning holds the
+cache lock exclusively, which a build holding it shared cannot take; it
+would have to try the lock and skip when another build runs.
