@@ -1,5 +1,9 @@
 # Unreleased
 
+- Without `-v`, a run of a built script logs nothing but errors, and a build
+  logs one line naming the script; `clean-magix-cache` logs only a wait for
+  running builds. A script standing in for a program printed two lines on
+  every call
 - Add `print-magix-expression`, printing the Nix expression of a script
   without building it, and the flake function `lib.build { pkgs, script }`,
   building a script through it in a derivation, for the checks of a flake

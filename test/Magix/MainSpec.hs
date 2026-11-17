@@ -89,23 +89,33 @@ withScript contents action = withEnv $ \_ e -> do
 run :: Options -> IO FilePath
 run opts = getQuietLogger >>= (`runMagix` opts)
 
--- | Run, expect the run to exit with failure, and return the errors it logged.
-runLoggingErrors :: Options -> IO [String]
-runLoggingErrors opts = do
+-- | Run the action with a logger at the priority, and return the messages it
+-- logged.
+getLogged :: Priority -> (Logger -> IO ()) -> IO [String]
+getLogged prio action = do
   ref <- newIORef []
   let handler =
         GenericHandler
-          { priority = ERROR,
+          { priority = prio,
             formatter = nullFormatter,
             privData = (),
             writeFunc = \() msg -> modifyIORef' ref (msg :),
             closeFunc = pure
           }
-  -- The handler of the root logger would print the errors as well.
+  -- The handler of the root logger would print the messages as well.
   updateGlobalLogger rootLoggerName removeHandler
-  logger <- setHandlers [handler] . setLevel ERROR <$> getLogger "Magix.MainSpec.Errors"
-  runMagix logger opts `shouldThrow` (== ExitFailure 1)
+  logger <- setHandlers [handler] . setLevel prio <$> getLogger "Magix.MainSpec.Logged"
+  action logger
   reverse <$> readIORef ref
+
+-- | Run, and return the messages logged at 'INFO', the default of magix.
+runLoggingInfo :: Options -> IO [String]
+runLoggingInfo opts = getLogged INFO $ \logger -> () <$ runMagix logger opts
+
+-- | Run, expect the run to exit with failure, and return the errors it logged.
+runLoggingErrors :: Options -> IO [String]
+runLoggingErrors opts =
+  getLogged ERROR $ \logger -> runMagix logger opts `shouldThrow` (== ExitFailure 1)
 
 -- | Whether the errors are one, naming the script of the options unreadable
 -- for the reason.
@@ -189,6 +199,15 @@ spec = do
           `shouldReturn` [("nix", ["build"])]
         exe `shouldSatisfy` isExecutableOf e.stub
 
+    it "logs one line at INFO, naming the script, when it builds" $
+      withScript script $ \e ->
+        runLoggingInfo e.options `shouldReturn` ["Building script: " <> e.options.scriptPath]
+
+    it "logs nothing at INFO when it reuses the build" $
+      withScript script $ \e -> do
+        _ <- run e.options
+        runLoggingInfo e.options `shouldReturn` []
+
     it "throws, and calls no Nix, when the directives fail to parse" $
       withScript "#!/usr/bin/env magix\necho Hello\n" $ \e -> do
         run e.options `shouldThrow` (\(_ :: DirectivesParseError) -> True)
@@ -236,6 +255,15 @@ spec = do
         readCalls e.stub `shouldReturn` []
 
   describe "cleanCache" $ do
+    it "logs nothing at INFO" $
+      withScript script $ \e -> do
+        _ <- run e.options
+        let cleanLogging mode =
+              getLogged INFO $ \logger ->
+                cleanCache logger $ CleanOptions {verbosity = Info, cachePath = Just e.cacheDir, cleanMode = mode}
+        cleanLogging RemoveStale `shouldReturn` []
+        cleanLogging RemoveAll `shouldReturn` []
+
     it "removes everything but the lock" $
       withScript script $ \e -> do
         _ <- run e.options

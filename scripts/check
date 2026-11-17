@@ -191,10 +191,12 @@ check_deploy_keeps_build() {
   rm -r "${script_dir}/old"
   ln -sfn "${script_dir}/new/script" "${script_dir}/script"
   output=$(cabal run -v0 magix -- --cache-path "${cache}" "${script_dir}/script" 2>&1)
-  grep -q "Script has already been built" <<<"${output}" ||
+  if grep -q "Building script: " <<<"${output}"; then
     fail "the deployed script was rebuilt: ${output}"
-  grep -q "^Deployed$" <<<"${output}" ||
-    fail "the deployed script did not run: ${output}"
+  fi
+  # A run reusing the build logs nothing without -v.
+  [[ ${output} == "Deployed" ]] ||
+    fail "the deployed script did not run alone: ${output}"
   assert_one_build "${cache}"
 }
 
