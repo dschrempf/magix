@@ -15,10 +15,11 @@ module Magix.Main
   )
 where
 
-import Control.Exception (onException, throwIO)
+import Control.Exception (displayException, throwIO, try)
 import Data.ByteString (readFile)
 import Data.Text (unpack)
 import Data.Text.Encoding (decodeUtf8')
+import GHC.IO.Exception (IOException (..))
 import Magix.Build (BuildStatus (..), build, getBuildStatus, resolveResult, withBuildLock)
 import Magix.Cache (removeCacheContents, removeStaleEntries)
 import Magix.Config (Config (..), getCacheDir, getConfig)
@@ -57,8 +58,8 @@ cleanCache logger opts = do
 
 -- | Build the script, or reuse its build, and return its executable.
 --
--- Exit with failure if the script cannot be read; throw if it cannot be
--- decoded, or its directives cannot be parsed.
+-- Log the reason and exit with failure if the script cannot be read; throw
+-- if it cannot be decoded, or its directives cannot be parsed.
 runMagix :: Logger -> Options -> IO FilePath
 runMagix logger opts = do
   let logD = logL logger DEBUG
@@ -69,9 +70,13 @@ runMagix logger opts = do
   let path = opts.scriptPath
   logD $ "Reading script at path: " <> path
   scriptBytes <-
-    readFile path `onException` do
-      logE $ "Could not read file: " <> path
-      exitFailure
+    try (readFile path) >>= \case
+      Left (e :: IOException) -> do
+        -- Not every IOException names the path, so drop it and name it here.
+        let reason = displayException e {ioe_filename = Nothing}
+        logE $ "Could not read file: " <> path <> ": " <> reason
+        exitFailure
+      Right bytes -> pure bytes
 
   logD "Decoding script file"
   scriptTxt <- case decodeUtf8' scriptBytes of
