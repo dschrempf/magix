@@ -122,6 +122,7 @@ test-suite test-magix
   other-modules:
     Magix.BuildSpec
     Magix.CacheSpec
+    Magix.ConfigSpec
     Magix.DirectivesSpec
     Magix.Language.Bash.DirectivesSpec
     Magix.Language.Bash.ExpressionSpec

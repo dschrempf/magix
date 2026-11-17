@@ -10,7 +10,8 @@
 --
 -- Creation date: Mon Oct 21 21:56:26 2024.
 module Magix.Tools
-  ( getRandomFakeConfig,
+  ( getRandomTempDir,
+    getRandomFakeConfig,
     getRandomFakeFlakeConfig,
     parseS,
     parseF,
@@ -58,11 +59,17 @@ getRandomString = replicateM 40 $ randomRIO ('a', 'z')
 getRandomByteString :: IO ByteString
 getRandomByteString = pack <$> replicateM 40 randomIO
 
-getRandomFakeConfig :: IO Config
-getRandomFakeConfig = do
+-- | Create a new directory in the temporary directory.
+getRandomTempDir :: IO FilePath
+getRandomTempDir = do
   dir <- ("magix-" <>) <$> getRandomString
   tmp <- (</> dir) <$> getTemporaryDirectory
   createDirectory tmp
+  pure tmp
+
+getRandomFakeConfig :: IO Config
+getRandomFakeConfig = do
+  tmp <- getRandomTempDir
   hsh <- getRandomByteString
   let invokedPath = tmp </> "fakeScriptPath"
       scriptName = "fakeScriptName"
