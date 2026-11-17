@@ -76,8 +76,9 @@ All targets use `-Wall -Werror -Wunused-packages -Wredundant-constraints` with `
 Work merges to `main` without review, so the tests are the gate. A change
 that can break behavior ships a test that fails without it; check that by
 reverting the change and running the test. A tiny change, or one whose test
-would only restate the code, needs none: judge which. `cabal test` needs no
-Nix: the package's own `nix build` runs it in the sandbox.
+would only restate the code, needs none: judge which. A test that needs the
+`nix` binary goes into the suite `test-magix-nix` (`test-nix/`); `cabal test`
+runs both suites, the sandboxed `nix build` only `test-magix`.
 
 ## Commits
 
