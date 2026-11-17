@@ -51,3 +51,12 @@ specs are already data-driven via `testExpression`.
 - The two TODO comments are removed.
 - Adding a new language to `Language` automatically includes it in all
   `pLanguageDirectives` tests without any manual additions to the test file.
+
+## Outcome
+
+Done on 2026-11-17: `getMinimalDirectiveInput :: Language -> (Text,
+LanguageDirectives)` in `test/Magix/Language/Tools.hs` matches every
+constructor without a wildcard, so a new language fails to compile until it
+has a case. `pLanguageDirectivesFailFor` and `pMinimalDirectivesFor` run over
+all languages; the failure inputs take the directive lines of that input. The
+Haskell case with `ghcFlags` alone stays an explicit test.

@@ -15,3 +15,10 @@ Test, for a script reached through a symbolic link and by a relative path:
 
 Pass a flake reference as the directive and a cache path in `Options`, so
 the test reads neither `NIX_PATH` nor the XDG cache directory.
+
+## Outcome
+
+Done on 2026-11-17: `test/Magix/ConfigSpec.hs`, seven tests on a script
+invoked by a relative path through a symbolic link, with a copy at another
+canonical path. Putting the script path back into the content hash fails
+two of them; keying the slot by the canonical path fails three.

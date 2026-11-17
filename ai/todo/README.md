@@ -5,9 +5,7 @@ From closure measurements of two NixOS systems that install magix
 
 1. `flake-nix-path-entry-resolves-to-a-store-path`.
 2. `script-builds-as-a-derivation-for-checks`.
-3. `flake-template-drops-flake-utils`.
 
-`parse-error-shows-the-header-alone`, `directive-tests-cover-every-language`,
-`get-config-has-unit-tests`, `format-script-formats-all-code`,
+`parse-error-shows-the-header-alone`, `format-script-formats-all-code`,
 `script-run-by-store-path-keeps-one-build` and
 `slot-of-a-non-ascii-path-ignores-the-locale` have no rank yet.
