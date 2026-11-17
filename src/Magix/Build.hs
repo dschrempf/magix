@@ -18,20 +18,22 @@ module Magix.Build
   )
 where
 
-import Control.Monad (unless, when)
+import Control.Exception (finally)
+import Control.Monad (unless)
 import Data.Text (Text)
 import Data.Text.IO (writeFile)
 import Magix.BuildMode (BuildMode (..))
 import Magix.Cache (recordInvokedPath, removeSuperseded)
 import Magix.Config (Config (..))
 import Magix.Expression (getFlakeWrapper)
+import Magix.Paths (getBuildExprPath, getPendingBuildDir)
 import System.Directory
   ( canonicalizePath,
     copyFile,
     createDirectoryIfMissing,
     doesDirectoryExist,
-    removeDirectoryRecursive,
-    removeFile,
+    removePathForcibly,
+    renameDirectory,
   )
 import System.Exit (ExitCode (..), exitFailure)
 import System.FileLock (SharedExclusive (..), withFileLock)
@@ -47,74 +49,66 @@ getBuildStatus c = do
   resultDirExists <- doesDirectoryExist c.resultLinkPath
   pure $ if resultDirExists then HasBeenBuilt else NeedToBuild
 
--- | Remove the build of the current contents, left by a forced or failed build;
--- `removeSuperseded` removes the others.
-removeBuild :: Logger -> Config -> IO ()
-removeBuild logger cfg = do
-  let logD = logL logger DEBUG
-  -- Build directory.
-  buildDirExists <- doesDirectoryExist cfg.buildDir
-  when buildDirExists $ do
-    logD $ "Removing build directory: " <> cfg.buildDir
-    removeDirectoryRecursive cfg.buildDir
-  -- Result directory.
-  resultDirExists <- doesDirectoryExist cfg.resultLinkPath
-  when resultDirExists $ do
-    logD $ "Removing link to build result: " <> cfg.resultLinkPath
-    removeFile cfg.resultLinkPath
-
 build :: Logger -> Config -> Text -> IO ()
 build logger cfg expr = do
   let logD = logL logger DEBUG
       logE = logL logger ERROR
-  logD "Removing an earlier build of the same contents, if any"
-  removeBuild logger cfg
+      pendingDir = getPendingBuildDir cfg.buildDir
   logD $ "Recording invoked path: " <> cfg.invokedPathLink
   recordInvokedPath cfg.slotDir cfg.invokedPath
-  logD $ "Recreating the build directory: " <> cfg.buildDir
-  createDirectoryIfMissing True cfg.buildDir
-  logD $ "Copying script to build directory: " <> cfg.buildDir </> "script"
-  copyFile cfg.scriptPath (cfg.buildDir </> "script")
-  logD $ "Writing Magix Nix expression: " <> cfg.buildExprPath
-  writeFile cfg.buildExprPath expr
-  (exitCode, stdOut, stdErr) <- case cfg.buildMode of
-    ChannelBuild nixpkgsPath -> do
-      logD "Building with 'nix-build'"
-      -- The templates import <nixpkgs>; '-I' makes it the hashed Nixpkgs, which
-      -- `NIX_PATH` may name differently or not at all.
-      readProcessWithExitCode
-        "nix-build"
-        [ "-I",
-          "nixpkgs=" <> nixpkgsPath,
-          "--out-link",
-          cfg.resultLinkPath,
-          cfg.buildDir
-        ]
-        ""
-    FlakeBuild ref -> do
-      logD "Writing universal Flake wrapper"
-      wrapper <- getFlakeWrapper ref
-      let flakePath = cfg.buildDir </> "flake.nix"
-      writeFile flakePath wrapper
-      logD "Building with 'nix build'"
-      readProcessWithExitCode
-        "nix"
-        [ "build",
-          "--no-write-lock-file",
-          "--out-link",
-          cfg.resultLinkPath,
-          cfg.buildDir
-        ]
-        ""
-  let success = exitCode == ExitSuccess
-      logFun = if success then logD else logE
-  unless (null stdOut) $ logFun $ "Build output ('stdout'):\n" <> stdOut
-  -- I would prefer to always log this with level "WARNING", but `nix-build`
-  -- does use `stderr` quite extensively.
-  unless (null stdErr) $ logFun $ "Build output ('stderr'):\n" <> stdErr
-  unless (exitCode == ExitSuccess) $ do
-    logE $ "Build failed with code: " <> show exitCode
-    exitFailure
+  -- Nix replaces the out-link only on success, so a failed build, also a forced
+  -- one, keeps the previous build. The out-link is the result link itself: Nix
+  -- roots the result by the path of the out-link.
+  flip finally (removePathForcibly pendingDir) $ do
+    logD $ "Creating the pending build directory: " <> pendingDir
+    removePathForcibly pendingDir
+    createDirectoryIfMissing True pendingDir
+    logD $ "Copying script to build directory: " <> pendingDir </> "script"
+    copyFile cfg.scriptPath (pendingDir </> "script")
+    let exprPath = getBuildExprPath pendingDir
+    logD $ "Writing Magix Nix expression: " <> exprPath
+    writeFile exprPath expr
+    (exitCode, stdOut, stdErr) <- case cfg.buildMode of
+      ChannelBuild nixpkgsPath -> do
+        logD "Building with 'nix-build'"
+        -- The templates import <nixpkgs>; '-I' makes it the hashed Nixpkgs, which
+        -- `NIX_PATH` may name differently or not at all.
+        readProcessWithExitCode
+          "nix-build"
+          [ "-I",
+            "nixpkgs=" <> nixpkgsPath,
+            "--out-link",
+            cfg.resultLinkPath,
+            pendingDir
+          ]
+          ""
+      FlakeBuild ref -> do
+        logD "Writing universal Flake wrapper"
+        wrapper <- getFlakeWrapper ref
+        let flakePath = pendingDir </> "flake.nix"
+        writeFile flakePath wrapper
+        logD "Building with 'nix build'"
+        readProcessWithExitCode
+          "nix"
+          [ "build",
+            "--no-write-lock-file",
+            "--out-link",
+            cfg.resultLinkPath,
+            pendingDir
+          ]
+          ""
+    let success = exitCode == ExitSuccess
+        logFun = if success then logD else logE
+    unless (null stdOut) $ logFun $ "Build output ('stdout'):\n" <> stdOut
+    -- I would prefer to always log this with level "WARNING", but `nix-build`
+    -- does use `stderr` quite extensively.
+    unless (null stdErr) $ logFun $ "Build output ('stderr'):\n" <> stdErr
+    unless success $ do
+      logE $ "Build failed with code: " <> show exitCode
+      exitFailure
+    logD $ "Replacing the build directory: " <> cfg.buildDir
+    removePathForcibly cfg.buildDir
+    renameDirectory pendingDir cfg.buildDir
   removeSuperseded logger cfg
 
 -- | Run the action holding the lock of the slot, and the cache lock shared:
