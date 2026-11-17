@@ -16,7 +16,8 @@ where
 
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as B
-import Data.List (isSuffixOf, sort)
+import Data.IORef (modifyIORef', newIORef, readIORef)
+import Data.List (isPrefixOf, isSuffixOf, sort)
 import Data.Text.Encoding.Error (UnicodeException)
 import Magix.BuildMode (BuildMode (..))
 import Magix.Directives (DirectivesParseError)
@@ -30,7 +31,9 @@ import Magix.Tools (withTempDir)
 import System.Directory (createDirectory, doesFileExist, listDirectory, removeFile)
 import System.Exit (ExitCode (..))
 import System.FilePath (takeDirectory, takeFileName, (</>))
-import System.Log.Logger (Logger, Priority (..), getLogger, setLevel)
+import System.Log.Formatter (nullFormatter)
+import System.Log.Handler.Simple (GenericHandler (..))
+import System.Log.Logger (Logger, Priority (..), getLogger, removeHandler, rootLoggerName, setHandlers, setLevel, updateGlobalLogger)
 import Test.Hspec (Spec, describe, it, shouldBe, shouldNotBe, shouldReturn, shouldSatisfy, shouldThrow)
 
 scriptName :: String
@@ -82,6 +85,33 @@ withScript contents action = withEnv $ \_ e -> do
 
 run :: Options -> IO FilePath
 run opts = getQuietLogger >>= (`runMagix` opts)
+
+-- | Run, expect the run to exit with failure, and return the errors it logged.
+runLoggingErrors :: Options -> IO [String]
+runLoggingErrors opts = do
+  ref <- newIORef []
+  let handler =
+        GenericHandler
+          { priority = ERROR,
+            formatter = nullFormatter,
+            privData = (),
+            writeFunc = \() msg -> modifyIORef' ref (msg :),
+            closeFunc = pure
+          }
+  -- The handler of the root logger would print the errors as well.
+  updateGlobalLogger rootLoggerName removeHandler
+  logger <- setHandlers [handler] . setLevel ERROR <$> getLogger "Magix.MainSpec.Errors"
+  runMagix logger opts `shouldThrow` (== ExitFailure 1)
+  reverse <$> readIORef ref
+
+-- | Whether the errors are one, naming the script of the options unreadable
+-- for the reason.
+isUnreadableError :: Options -> String -> [String] -> Bool
+isUnreadableError opts reason = \case
+  [err] ->
+    ("Could not read file: " <> opts.scriptPath <> ": ") `isPrefixOf` err
+      && reason `isSuffixOf` err
+  _otherwise -> False
 
 clean :: FilePath -> CleanMode -> IO ()
 clean cacheDir mode = do
@@ -158,9 +188,17 @@ spec = do
         run e.options `shouldThrow` (\(_ :: UnicodeException) -> True)
         readCalls e.stub `shouldReturn` []
 
-    it "exits with failure when the script is missing" $
+    it "exits with failure, and logs why, when the script is missing" $
       withEnv $ \_ e -> do
-        run e.options `shouldThrow` (== ExitFailure 1)
+        errs <- runLoggingErrors e.options
+        errs `shouldSatisfy` isUnreadableError e.options "does not exist (No such file or directory)"
+        readCalls e.stub `shouldReturn` []
+
+    it "exits with failure, and logs why, when the script is a directory" $
+      withEnv $ \_ e -> do
+        createDirectory e.options.scriptPath
+        errs <- runLoggingErrors e.options
+        errs `shouldSatisfy` isUnreadableError e.options "inappropriate type (is a directory)"
         readCalls e.stub `shouldReturn` []
 
   describe "cleanCache" $ do
