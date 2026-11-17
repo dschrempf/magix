@@ -28,6 +28,8 @@
   exist, and resolve symbolic links, so a channel update rebuilds a cached
   script. A script cached under a symlinked `$NIX_PATH` entry rebuilds once
   after upgrading
+- Build against the Nixpkgs in the cache hash: `nix-build` used `<nixpkgs>`
+  from `$NIX_PATH`, also when `--nixpkgs-path` named another
 
 # Version 1.0.0.0
 

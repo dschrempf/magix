@@ -203,7 +203,19 @@ check_flake_nix_path_entry() {
     fail "the 'flake:' entry did not resolve to ${nixpkgs}: ${output}"
 }
 
+check_nixpkgs_path_builds_against_it() {
+  # The build uses the Nixpkgs given by '--nixpkgs-path', not the one in
+  # NIX_PATH.
+  local cache nixpkgs
+  cache=$(mktemp -u -d -t magix-XXXXXX)
+  nixpkgs=$(nix-instantiate --find-file nixpkgs)
+  NIX_PATH=nixpkgs=/nonexistent cabal run magix -- --cache-path "${cache}" \
+    --nixpkgs-path "${nixpkgs}" -v test-scripts/bash/minimal ||
+    fail "the build ignores --nixpkgs-path ${nixpkgs}"
+}
+
 check_sample_scripts
+check_nixpkgs_path_builds_against_it
 check_flake_nix_path_entry
 check_c_locale
 check_parallel_builds
