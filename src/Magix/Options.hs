@@ -15,6 +15,7 @@ module Magix.Options
     Command (..),
     CleanMode (..),
     CleanOptions (..),
+    PrintOptions (..),
     Options (..),
     getCommand,
 
@@ -85,6 +86,13 @@ data CleanOptions = CleanOptions
   }
   deriving (Eq, Show, Generic)
 
+-- | Options of printing the Nix expression of a script.
+data PrintOptions = PrintOptions
+  { verbosity :: !Verbosity,
+    scriptPath :: !FilePath
+  }
+  deriving (Eq, Show, Generic)
+
 data Options = Options
   { verbosity :: !Verbosity,
     forceBuild :: !Rebuild,
@@ -97,7 +105,7 @@ data Options = Options
   }
   deriving (Eq, Show, Generic)
 
-data Command = Clean !CleanOptions | Run !Options
+data Command = Clean !CleanOptions | Print !PrintOptions | Run !Options
   deriving (Eq, Show)
 
 -- | Raw options as parsed from the command line, before validation.
@@ -112,20 +120,31 @@ data RawOptions = RawOptions
   }
   deriving (Eq, Show)
 
-data RawCommand = RawClean !CleanOptions | RawRun !RawOptions
+data RawCommand = RawClean !CleanOptions | RawPrint !PrintOptions | RawRun !RawOptions
   deriving (Eq, Show)
 
 pRawCommand :: Parser RawCommand
-pRawCommand = pCleanCommand <|> pRawRun
+pRawCommand = pCommand <|> pRawRun
   where
-    pCleanCommand =
+    pCommand =
       hsubparser $
-        command "clean-magix-cache" $
-          info (RawClean <$> pCleanOptions) (progDesc "Clean the Magix cache.")
+        command "clean-magix-cache" (info (RawClean <$> pCleanOptions) (progDesc "Clean the Magix cache."))
+          <> command
+            "print-magix-expression"
+            ( info
+                (RawPrint <$> pPrintOptions)
+                (progDesc "Print the Nix expression building the script from the file 'script' next to the expression; build nothing.")
+            )
     pRawRun = RawRun <$> pRawOptions
 
 pCleanOptions :: Parser CleanOptions
 pCleanOptions = CleanOptions <$> pLogLevel <*> pCachePath <*> pCleanMode
+
+pPrintOptions :: Parser PrintOptions
+pPrintOptions = PrintOptions <$> pLogLevel <*> pPrintScriptPath
+  where
+    pPrintScriptPath =
+      strArgument (metavar "SCRIPT_FILE_PATH" <> help "File path of script to print the Nix expression of")
 
 pCleanMode :: Parser CleanMode
 pCleanMode =
@@ -274,6 +293,7 @@ resolveCommand ::
   NixEnv (Maybe String) ->
   Either String Command
 resolveCommand (RawClean co) _ _ = Right $ Clean co
+resolveCommand (RawPrint po) _ _ = Right $ Print po
 resolveCommand (RawRun raw) magixEnv nixEnv = do
   let mRef = raw.nixpkgsRef <|> magixEnv.nixpkgsRef
   buildMode <- case (raw.nixpkgsPath, mRef) of

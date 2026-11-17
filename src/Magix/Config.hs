@@ -17,6 +17,7 @@ module Magix.Config
     resolveBuildMode,
     getConfig,
     getCacheDir,
+    getScriptName,
   )
 where
 
@@ -104,7 +105,7 @@ getConfig opts scriptContents mDirectiveRef = do
   scriptPath <- canonicalizePath p
   cacheDir <- getCacheDir opts.cachePath
   buildMode <- resolveBuildMode opts mDirectiveRef
-  let scriptName = takeBaseName p
+  let scriptName = getScriptName p
       magixHash =
         getMagixHash $
           MagixHashContents
@@ -121,6 +122,10 @@ getConfig opts scriptContents mDirectiveRef = do
   pure $ Config {..}
   where
     p = opts.scriptPath
+
+-- | The name of the script, and of its executable: the base name of its path.
+getScriptName :: FilePath -> String
+getScriptName = takeBaseName
 
 getCacheDir :: Maybe FilePath -> IO FilePath
 getCacheDir mCachePath = maybe (getUserCacheDir "magix") canonicalizePath mCachePath

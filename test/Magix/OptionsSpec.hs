@@ -22,6 +22,7 @@ import Magix.Options
     CleanOptions (..),
     Command (..),
     Options (..),
+    PrintOptions (..),
     RawCommand (..),
     RawOptions (..),
     Rebuild (..),
@@ -183,7 +184,20 @@ spec = do
       it "rejects the options of a run" $
         parse ["clean-magix-cache", "-f"] `shouldSatisfy` failsWith (ExitFailure 1) "Invalid option"
 
+    describe "print-magix-expression" $ do
+      it "parses the script and --verbose" $ do
+        let r = Right $ RawPrint PrintOptions {verbosity = Debug, scriptPath = "script"}
+        parse ["print-magix-expression", "-v", "script"] `shouldBe` r
+        parse ["print-magix-expression", "script", "--verbose"] `shouldBe` r
+
+      it "rejects the options of a run" $
+        parse ["print-magix-expression", "-f", "script"] `shouldSatisfy` failsWith (ExitFailure 1) "Invalid option"
+
   describe "resolveCommand" $ do
+    it "passes print-magix-expression through, also without NIX_PATH" $
+      resolve noMagixEnv noNixEnv ["print-magix-expression", "script"]
+        `shouldBe` Right (Print PrintOptions {verbosity = Info, scriptPath = "script"})
+
     it "passes clean-magix-cache through" $
       resolve noMagixEnv noNixEnv ["clean-magix-cache", "-v", "--stale"]
         `shouldBe` Right (Clean CleanOptions {verbosity = Debug, cachePath = Nothing, cleanMode = RemoveStale})

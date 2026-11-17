@@ -111,6 +111,8 @@ Available options:
 
 Available commands:
   clean-magix-cache        Clean the Magix cache.
+  print-magix-expression   Print the Nix expression building the script from the
+                           file 'script' next to the expression; build nothing.
 
 Magix-specific environment variables:
   MAGIX_NIXPKGS_REF
