@@ -25,8 +25,9 @@ import Data.ByteString (ByteString)
 import Data.Text (Text)
 import Magix.BuildMode (BuildMode (..))
 import Magix.Env (NixEnv (..), nixEnvDesc)
+import Magix.FlakeRegistry (resolveFlakeRef)
 import Magix.Hash (MagixHashContents (..), getMagixHash, getSlotHash)
-import Magix.NixpkgsPath (getDefaultNixpkgsPath, resolveNixpkgs)
+import Magix.NixpkgsPath (getDefaultNixpkgsPath, renderEntryError, resolveNixpkgs)
 import Magix.Options (Options (..))
 import Magix.Paths
   ( getBuildDir,
@@ -71,18 +72,21 @@ data Config = Config
   }
   deriving (Eq, Show)
 
-getDefaultNixpkgsPathOrFail :: Maybe String -> IO FilePath
-getDefaultNixpkgsPathOrFail Nothing = die $ fst nixEnvDesc.nixPath <> " is not set"
-getDefaultNixpkgsPathOrFail (Just np) = case getDefaultNixpkgsPath np of
-  Left err -> do
-    putStrLn $ "Could not retrieve Nixpkgs path from " <> fst nixEnvDesc.nixPath
-    throwIO err
-  Right entries -> resolveFirst entries
+getDefaultNixpkgsPathOrFail :: NixEnv (Maybe String) -> IO FilePath
+getDefaultNixpkgsPathOrFail env = case env.nixPath of
+  Nothing -> die $ fst nixEnvDesc.nixPath <> " is not set"
+  Just np -> case getDefaultNixpkgsPath np of
+    Left err -> do
+      putStrLn $ "Could not retrieve Nixpkgs path from " <> fst nixEnvDesc.nixPath
+      throwIO err
+    Right entries -> resolveFirst np entries
   where
     -- Return the first entry resolving to a Nixpkgs path.
-    resolveFirst [] =
+    resolveFirst np [] =
       die $ "Could not find Nixpkgs in " <> fst nixEnvDesc.nixPath <> ": " <> np
-    resolveFirst (e : es) = resolveNixpkgs e >>= maybe (resolveFirst es) pure
+    resolveFirst np (e : es) =
+      resolveNixpkgs (resolveFlakeRef env) e
+        >>= either (die . renderEntryError) (maybe (resolveFirst np es) pure)
 
 -- | Resolve the build mode.
 -- Priority: script's #!nixpkgs directive > CLI/env > NIX_PATH channel
@@ -91,7 +95,7 @@ resolveBuildMode opts mDirectiveRef =
   case (FlakeBuild <$> mDirectiveRef) <|> opts.buildMode of
     Just (ChannelBuild p) -> ChannelBuild <$> canonicalizePath p
     Just (FlakeBuild r) -> pure $ FlakeBuild r
-    Nothing -> ChannelBuild <$> getDefaultNixpkgsPathOrFail opts.nixEnv.nixPath
+    Nothing -> ChannelBuild <$> getDefaultNixpkgsPathOrFail opts.nixEnv
 
 getConfig :: Options -> ByteString -> Maybe Text -> IO Config
 getConfig opts scriptContents mDirectiveRef = do

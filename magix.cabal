@@ -64,6 +64,7 @@ library
     Magix.Directives
     Magix.Env
     Magix.Expression
+    Magix.FlakeRegistry
     Magix.Hash
     Magix.Language.Bash.Directives
     Magix.Language.Bash.Expression
@@ -86,6 +87,7 @@ library
   autogen-modules: Paths_magix
   ghc-options:
   build-depends:
+    , aeson
     , base                  >=4.7 && <5
     , bytestring
     , cryptohash-sha256
@@ -124,6 +126,7 @@ test-suite test-magix
     Magix.CacheSpec
     Magix.ConfigSpec
     Magix.DirectivesSpec
+    Magix.FlakeRegistrySpec
     Magix.Language.Bash.DirectivesSpec
     Magix.Language.Bash.ExpressionSpec
     Magix.Language.Common.DirectivesSpec

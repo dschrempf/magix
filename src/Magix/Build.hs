@@ -78,11 +78,15 @@ build logger cfg expr = do
   logD $ "Writing Magix Nix expression: " <> cfg.buildExprPath
   writeFile cfg.buildExprPath expr
   (exitCode, stdOut, stdErr) <- case cfg.buildMode of
-    ChannelBuild _ -> do
+    ChannelBuild nixpkgsPath -> do
       logD "Building with 'nix-build'"
+      -- The templates import <nixpkgs>; '-I' makes it the hashed Nixpkgs, which
+      -- `NIX_PATH` may name differently or not at all.
       readProcessWithExitCode
         "nix-build"
-        [ "--out-link",
+        [ "-I",
+          "nixpkgs=" <> nixpkgsPath,
+          "--out-link",
           cfg.resultLinkPath,
           cfg.buildDir
         ]

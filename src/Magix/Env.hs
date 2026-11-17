@@ -54,7 +54,10 @@ getMagixEnv = traverse (lookupEnv . fst) magixEnvDesc
 
 -- | Nix-related environment variables used by Magix.
 data NixEnv a = NixEnv
-  { nixPath :: !a
+  { nixPath :: !a,
+    nixConfigHome :: !a,
+    xdgConfigHome :: !a,
+    nixConfDir :: !a
   }
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
@@ -63,8 +66,21 @@ nixEnvDesc =
   NixEnv
     { nixPath =
         ( "NIX_PATH",
-          [ "Used to extract the default Nixpkgs channel path when neither '--nixpkgs-path' nor 'MAGIX_NIXPKGS_REF' is set."
+          [ "Used to find Nixpkgs when neither '--nixpkgs-path' nor 'MAGIX_NIXPKGS_REF' is set: the first entry providing an existing path, 'nixpkgs=<path>' or an unprefixed directory '<dir>' holding '<dir>/nixpkgs', with symbolic links resolved.",
+            "A 'flake:<id>' target resolves through the user and the system flake registry to the path of a 'path' entry. magix does not read the global registry, and fails on other targets, such as 'channel:' and URL targets."
           ]
+        ),
+      nixConfigHome =
+        ( "NIX_CONFIG_HOME",
+          ["Directory of the user flake registry (default: '$XDG_CONFIG_HOME/nix', else '$HOME/.config/nix')."]
+        ),
+      xdgConfigHome =
+        ( "XDG_CONFIG_HOME",
+          ["See 'NIX_CONFIG_HOME'."]
+        ),
+      nixConfDir =
+        ( "NIX_CONF_DIR",
+          ["Directory of the system flake registry (default: '/etc/nix')."]
         )
     }
 

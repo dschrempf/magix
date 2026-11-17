@@ -187,7 +187,36 @@ check_stale_keeps_non_ascii_path() {
   done
 }
 
+check_flake_nix_path_entry() {
+  # A 'flake:' entry of NIX_PATH resolves through the user flake registry to
+  # its path.
+  local cache config nixpkgs output
+  cache=$(mktemp -u -d -t magix-XXXXXX)
+  config=$(mktemp -d -t magix-config-XXXXXX)
+  nixpkgs=$(nix-instantiate --find-file nixpkgs)
+  printf '{"version":2,"flakes":[{"from":{"type":"indirect","id":"magix-nixpkgs"},"to":{"type":"path","path":"%s"}}]}' \
+    "${nixpkgs}" >"${config}/registry.json"
+  output=$(NIX_CONFIG_HOME="${config}" NIX_PATH=nixpkgs=flake:magix-nixpkgs \
+    cabal run -v0 magix -- --cache-path "${cache}" -v test-scripts/bash/minimal 2>&1) ||
+    fail "the build with a 'flake:' entry failed: ${output}"
+  grep -qF "ChannelBuild \"${nixpkgs}\"" <<<"${output}" ||
+    fail "the 'flake:' entry did not resolve to ${nixpkgs}: ${output}"
+}
+
+check_nixpkgs_path_builds_against_it() {
+  # The build uses the Nixpkgs given by '--nixpkgs-path', not the one in
+  # NIX_PATH.
+  local cache nixpkgs
+  cache=$(mktemp -u -d -t magix-XXXXXX)
+  nixpkgs=$(nix-instantiate --find-file nixpkgs)
+  NIX_PATH=nixpkgs=/nonexistent cabal run magix -- --cache-path "${cache}" \
+    --nixpkgs-path "${nixpkgs}" -v test-scripts/bash/minimal ||
+    fail "the build ignores --nixpkgs-path ${nixpkgs}"
+}
+
 check_sample_scripts
+check_nixpkgs_path_builds_against_it
+check_flake_nix_path_entry
 check_c_locale
 check_parallel_builds
 check_script_move

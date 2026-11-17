@@ -81,13 +81,18 @@ magix -h
 ```
 
 ``` text
-Usage: magix [-v|--verbose] [-f|--force-build] [-c|--cache-path CACHE_PATH]
-             [-n|--nixpkgs-path NIXPKGS_PATH] SCRIPT_FILE_PATH [SCRIPT_ARGS]
+Magix version 1.0.0.0
+
+Usage: magix [--version]
+             (COMMAND | [-v|--verbose] [-f|--force-build]
+               [-c|--cache-path CACHE_PATH] [-n|--nixpkgs-path NIXPKGS_PATH]
+               [-r|--nixpkgs-ref NIXPKGS_REF] SCRIPT_FILE_PATH [SCRIPT_ARGS])
 
   Build, cache, and run possibly compiled scripts with dependencies using the
   Nix package manager
 
 Available options:
+  --version                Show version
   -h,--help                Show this help text
   -v,--verbose             Print debug messages
   -f,--force-build         Force build, even when cached build exists
@@ -95,10 +100,38 @@ Available options:
                            Path of cache directory to use for builds (default:
                            '$XDG_CACHE_HOME/magix')
   -n,--nixpkgs-path NIXPKGS_PATH
-                           Path of Nixpkgs repository to use (default: extracted
-                           from '$NIX_PATH')
+                           Path of Nixpkgs to use (default: found in
+                           '$NIX_PATH', see below)
+  -r,--nixpkgs-ref NIXPKGS_REF
+                           Nixpkgs Flake reference, e.g. 'nixpkgs' or
+                           'github:NixOS/nixpkgs/nixos-unstable'; when set, uses
+                           'nix build' instead of 'nix-build'
   SCRIPT_FILE_PATH         File path of script to build, cache and run
   SCRIPT_ARGS              Arguments passed on to the script
+
+Available commands:
+  clean-magix-cache        Clean the Magix cache.
+
+Magix-specific environment variables:
+  MAGIX_NIXPKGS_REF
+    Nixpkgs Flake reference; overridden by '--nixpkgs-ref'.
+    When set, uses 'nix build' instead of 'nix-build'.
+Nix environment variables:
+  NIX_PATH
+    Used to find Nixpkgs when neither '--nixpkgs-path' nor 'MAGIX_NIXPKGS_REF'
+    is set: the first entry providing an existing path, 'nixpkgs=<path>' or an
+    unprefixed directory '<dir>' holding '<dir>/nixpkgs', with symbolic links
+    resolved.
+    A 'flake:<id>' target resolves through the user and the system flake
+    registry to the path of a 'path' entry. magix does not read the global
+    registry, and fails on other targets, such as 'channel:' and URL targets.
+  NIX_CONFIG_HOME
+    Directory of the user flake registry (default: '$XDG_CONFIG_HOME/nix', else
+    '$HOME/.config/nix').
+  XDG_CONFIG_HOME
+    See 'NIX_CONFIG_HOME'.
+  NIX_CONF_DIR
+    Directory of the system flake registry (default: '/etc/nix').
 ```
 
 # New languages
