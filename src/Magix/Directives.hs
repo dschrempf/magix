@@ -16,6 +16,7 @@ module Magix.Directives
     pNixpkgsDirective,
     pLanguageDirectives,
     pDirectives,
+    DirectivesParseError,
     getDirectives,
   )
 where

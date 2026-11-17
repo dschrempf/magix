@@ -135,6 +135,7 @@ test-suite test-magix
     Magix.Language.Python.DirectivesSpec
     Magix.Language.Python.ExpressionSpec
     Magix.Language.Tools
+    Magix.MainSpec
     Magix.NixpkgsPathSpec
     Magix.OptionsSpec
     Magix.StubNix
