@@ -19,6 +19,7 @@ module Magix.NixpkgsPath
     EntryError (..),
     renderEntryError,
     resolveNixpkgs,
+    canonicalIfExists,
   )
 where
 
