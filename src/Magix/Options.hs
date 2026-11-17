@@ -17,6 +17,12 @@ module Magix.Options
     CleanOptions (..),
     Options (..),
     getCommand,
+
+    -- * Pure core of 'getCommand'
+    RawCommand (..),
+    RawOptions (..),
+    rawCommandParser,
+    resolveCommand,
   )
 where
 
@@ -36,7 +42,7 @@ import Magix.Env
   )
 import Options.Applicative
   ( Parser,
-    ParserInfo (infoPolicy),
+    ParserInfo,
     command,
     execParser,
     flag,
@@ -51,6 +57,7 @@ import Options.Applicative
     long,
     many,
     metavar,
+    noIntersperse,
     optional,
     progDesc,
     short,
@@ -58,7 +65,6 @@ import Options.Applicative
     strOption,
   )
 import Options.Applicative.Help (Doc, Pretty (..), fillSep, hardline, indent, vsep)
-import Options.Applicative.Types (ArgPolicy (..))
 import Paths_magix qualified as P
 import System.Exit (die)
 
@@ -92,6 +98,7 @@ data Options = Options
   deriving (Eq, Show, Generic)
 
 data Command = Clean !CleanOptions | Run !Options
+  deriving (Eq, Show)
 
 -- | Raw options as parsed from the command line, before validation.
 data RawOptions = RawOptions
@@ -103,8 +110,10 @@ data RawOptions = RawOptions
     scriptPath :: !FilePath,
     scriptArgs :: ![String]
   }
+  deriving (Eq, Show)
 
 data RawCommand = RawClean !CleanOptions | RawRun !RawOptions
+  deriving (Eq, Show)
 
 pRawCommand :: Parser RawCommand
 pRawCommand = pCleanCommand <|> pRawRun
@@ -228,6 +237,8 @@ formatEnvVarDesc (varName, varDesc) =
   where
     formatLine = fillSep . map pretty . words
 
+-- | The command line parser. Arguments after the script path go to the script
+-- ('noIntersperse'), also those that look like options of Magix.
 rawCommandParser :: ParserInfo RawCommand
 rawCommandParser =
   info
@@ -236,6 +247,7 @@ rawCommandParser =
         <*> pRawCommand
     )
     ( fullDesc
+        <> noIntersperse
         <> progDesc desc
         <> header version
         <> footerDoc (Just $ magixEnvVarsFooter <> hardline <> nixEnvVarsFooter)
@@ -249,28 +261,35 @@ rawCommandParser =
 
 getCommand :: IO Command
 getCommand = do
-  rawCmd <- execParser (rawCommandParser {infoPolicy = NoIntersperse})
-  case rawCmd of
-    RawClean co ->
-      pure $ Clean co
-    RawRun raw -> do
-      magixEnv <- getMagixEnv
-      nixEnv <- getNixEnv
-      let mRef = raw.nixpkgsRef <|> magixEnv.nixpkgsRef
-      buildMode <- case (raw.nixpkgsPath, mRef) of
-        (Just _, Just _) -> die "--nixpkgs-path and --nixpkgs-ref are mutually exclusive"
-        (Just p, Nothing) -> pure $ Just (ChannelBuild p)
-        (Nothing, Just r) -> pure $ Just (FlakeBuild (pack r))
-        (Nothing, Nothing) -> pure Nothing
-      pure $
-        Run $
-          Options
-            { verbosity = raw.verbosity,
-              forceBuild = raw.forceBuild,
-              cachePath = raw.cachePath,
-              buildMode = buildMode,
-              magixEnv = magixEnv,
-              nixEnv = nixEnv,
-              scriptPath = raw.scriptPath,
-              scriptArgs = raw.scriptArgs
-            }
+  rawCmd <- execParser rawCommandParser
+  magixEnv <- getMagixEnv
+  nixEnv <- getNixEnv
+  either die pure $ resolveCommand rawCmd magixEnv nixEnv
+
+-- | Validate the parsed command line against the environment; 'Left' holds
+-- the error message.
+resolveCommand ::
+  RawCommand ->
+  MagixEnv (Maybe String) ->
+  NixEnv (Maybe String) ->
+  Either String Command
+resolveCommand (RawClean co) _ _ = Right $ Clean co
+resolveCommand (RawRun raw) magixEnv nixEnv = do
+  let mRef = raw.nixpkgsRef <|> magixEnv.nixpkgsRef
+  buildMode <- case (raw.nixpkgsPath, mRef) of
+    (Just _, Just _) -> Left "--nixpkgs-path and --nixpkgs-ref are mutually exclusive"
+    (Just p, Nothing) -> Right $ Just (ChannelBuild p)
+    (Nothing, Just r) -> Right $ Just (FlakeBuild (pack r))
+    (Nothing, Nothing) -> Right Nothing
+  pure $
+    Run $
+      Options
+        { verbosity = raw.verbosity,
+          forceBuild = raw.forceBuild,
+          cachePath = raw.cachePath,
+          buildMode = buildMode,
+          magixEnv = magixEnv,
+          nixEnv = nixEnv,
+          scriptPath = raw.scriptPath,
+          scriptArgs = raw.scriptArgs
+        }
