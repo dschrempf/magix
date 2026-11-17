@@ -1,7 +1,9 @@
 # Unreleased
 
 - Add `print-magix-expression`, printing the Nix expression of a script
-  without building it
+  without building it, and the flake function `lib.build { pkgs, script }`,
+  building a script through it in a derivation, for the checks of a flake
+  installing magix scripts
 - Keep one build per script: the cache holds a slot per path a script is
   invoked by, and a build removes the build it supersedes. A deploy that moves
   an unchanged script (a new store path behind the same invoked path) no

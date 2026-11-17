@@ -65,6 +65,51 @@
             '';
           };
 
+          # Build every test script as a consumer's check would.
+          checks =
+            let
+              inherit (pkgs) lib;
+              buildScripts =
+                language:
+                let
+                  dir = ./test-scripts + "/${language}";
+                in
+                lib.mapAttrs' (n: _: {
+                  name = "${language}-${lib.replaceStrings [ " " ] [ "-" ] n}";
+                  value = self.lib.build {
+                    inherit pkgs;
+                    script = dir + "/${n}";
+                  };
+                }) (builtins.readDir dir);
+              empty = ./test-scripts/bash/empty;
+            in
+            lib.concatMapAttrs (n: _: buildScripts n) (builtins.readDir ./test-scripts)
+            // {
+              # The executable is named after a path, a store path, or 'name'.
+              lib-build-names = pkgs.runCommand "lib-build-names" { } ''
+                test -x ${
+                  self.lib.build {
+                    inherit pkgs;
+                    script = empty;
+                  }
+                }/bin/empty
+                test -x ${
+                  self.lib.build {
+                    inherit pkgs;
+                    script = "${empty}";
+                  }
+                }/bin/empty
+                test -x ${
+                  self.lib.build {
+                    inherit pkgs;
+                    script = empty;
+                    name = "other.sh";
+                  }
+                }/bin/other
+                touch "$out"
+              '';
+            };
+
           devShells.check = hpkgs.shellFor {
             packages = _: [ theseHpkgs.magix ];
             buildInputs = [ hpkgs.cabal-install ];
@@ -77,6 +122,45 @@
     in
     {
       overlays.default = nixpkgs.lib.composeManyExtensions overlays;
+
+      # See 'Check scripts in a flake' in Readme.md.
+      lib.build =
+        {
+          pkgs,
+          script,
+          name ?
+            let
+              base = baseNameOf (toString script);
+              m = builtins.match "[0-9a-z]{32}-(.*)" base;
+            in
+            if m == null then base else builtins.head m,
+        }:
+        let
+          # A store path cannot carry the name of every script.
+          src =
+            if builtins.isPath script then
+              builtins.path {
+                path = script;
+                name = "script";
+              }
+            else
+              script;
+          expression =
+            pkgs.runCommand "${pkgs.lib.strings.sanitizeDerivationName name}-magix-expression"
+              {
+                inherit src;
+                scriptName = name;
+                nativeBuildInputs = [ self.packages.${pkgs.stdenv.buildPlatform.system}.magix ];
+              }
+              ''
+                # The layout of a build directory of magix.
+                mkdir "$out"
+                cp "$src" "$out/script"
+                cp "$src" "./$scriptName"
+                magix print-magix-expression "./$scriptName" >"$out/default.nix"
+              '';
+        in
+        import expression { inherit pkgs; };
     }
     // flake-utils.lib.eachDefaultSystem perSystem;
 

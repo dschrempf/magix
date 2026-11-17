@@ -136,6 +136,39 @@ Nix environment variables:
     Directory of the system flake registry (default: '/etc/nix').
 ```
 
+# Check scripts in a flake
+
+A flake installing magix scripts can build each of them in a check: `lib.build`
+builds a script with the template and directives magix uses at run time,
+against the given Nixpkgs. It runs `magix print-magix-expression` in a
+derivation and imports the expression (import from derivation).
+
+``` nix
+{
+  inputs.magix.url = "github:dschrempf/magix";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+
+  outputs =
+    { magix, nixpkgs, ... }:
+    let
+      pkgs = nixpkgs.legacyPackages.x86_64-linux;
+    in
+    {
+      checks.x86_64-linux.my-script = magix.lib.build {
+        inherit pkgs;
+        script = ./scripts/my-script;
+      };
+    };
+}
+```
+
+`script` is a path or a store path, such as a derivation. The result holds the
+executable `bin/my-script`. The optional argument `name`
+is the file name magix sees (default: the base name of `script`, without the
+hash of a store path); the executable drops its extension, as with
+`magix my-script.sh`. A `#!nixpkgs` directive is ignored: the build uses
+`pkgs`.
+
 # New languages
 
 We have designed Magix so that implementing new languages is straightforward. In
