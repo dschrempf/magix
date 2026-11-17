@@ -40,27 +40,31 @@ network: CI runs it, `cabal test` does not.
 7. **Properties.** QuickCheck or hedgehog properties for the `NIX_PATH` and
    directive parsers: whitespace, package names, entry order.
 
-## Open
+## Decided (2026-11-17)
 
-- **Stub on `PATH`, or the Nix command injected into `Config`?** Recommended:
-  the stub. It needs no change to production code and tests the real process
-  call.
-- **Where tests that need the `nix` binary (6) run.** The package's own
-  `nix build` runs `cabal test` in the sandbox, where they can't run.
-  Recommended: a second test suite, run by `scripts/check`, so that
-  `cabal test` keeps needing no Nix.
-- **Port `scripts/check` to Haskell?** Recommended: no. It stays the
-  end-to-end tier against real Nix; (2) moves its cache logic into unit
-  tests.
-- **A coverage floor in `check`?** Recommended: no hard threshold. `check`
-  prints the per-module report.
-- **A rule in `CLAUDE.md`:** a fix ships a test that fails without it.
-  Recommended: yes. The agents checked this by hand on 2026-11-17.
-- **Temporary directories leak:** `getRandomTempDir` never removes them.
-  Recommended: `withSystemTempDirectory` from `temporary`.
+- **The build tests stub `nix-build` and `nix` on `PATH`.** No change to
+  production code, and the test exercises the real process call.
+- **Tests that need the `nix` binary (6) form a second test suite, which
+  `scripts/check` runs.** The package's own `nix build` runs `cabal test` in
+  the sandbox, where they can't run.
+- **`scripts/check` stays the end-to-end tier against real Nix.** (2) moves
+  its cache logic into unit tests; nothing is ported to Haskell.
+- **`check` prints the per-module coverage report, with no threshold.** It
+  shows where tests are thin, and is no target.
+- **The `Tests` rule in `CLAUDE.md`:** a change that can break behavior
+  ships a test; a tiny one needs none, by judgment.
+- **`withSystemTempDirectory` from `temporary` replaces
+  `getRandomTempDir`,** which never removes its directories.
+- **QuickCheck for (7).**
+
+When the second suite and the coverage report land, add them to `Tests` in
+`CLAUDE.md`.
 
 ## Order with other work
 
 `flake-nix-path-entry-resolves-to-a-store-path` is in progress on its own
 branch. It touches `NixpkgsPath`, `Config`, `Build`, `Options` and `Env`.
-Start (2)–(5) after it merges. (1), (6) and (7) don't overlap with it.
+Start (2)–(5) after it merges, together with the `temporary` switch and the
+coverage report, which touch `test/Magix/Tools.hs` and `scripts/check` as
+that branch does. (1), (6) and (7) don't overlap with it: they started on
+2026-11-17 on branch `test/hashes-templates-properties`.
