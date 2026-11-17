@@ -14,15 +14,15 @@ module Magix.DirectivesSpec
   )
 where
 
-import Data.Text (Text, unlines)
+import Data.Maybe (fromMaybe)
+import Data.Text (Text, stripPrefix, unlines)
 import Data.Text.IO (readFile)
 import Magix.Directives (Directives (..), pDirectives, pLanguageDirectives, pMagixDirective, pNixpkgsDirective, pShebang)
 import Magix.Language.Bash.Directives (BashDirectives (..))
 import Magix.Language.Directives (LanguageDirectives (..))
 import Magix.Language.Haskell.Directives (HaskellDirectives (..))
 import Magix.Language.Language (Language (..), getLanguageNameLowercase)
-import Magix.Language.Python.Directives (PythonDirectives (..))
-import Magix.Language.Tools (getEmptyLanguageDirectives, getMinimalTestcase)
+import Magix.Language.Tools (getEmptyLanguageDirectives, getMinimalDirectiveInput, getMinimalTestcase)
 import Magix.Tools (parseF, parseS)
 import Test.Hspec (Spec, SpecWith, describe, it)
 import Prelude hiding (readFile, unlines)
@@ -45,6 +45,37 @@ pEmptyLanguageDirectivesFor language =
     name = getLanguageNameLowercase language
     emptyLanguageDirectives = getEmptyLanguageDirectives language
     testWith directives = parseS pLanguageDirectives directives emptyLanguageDirectives
+
+pLanguageDirectivesFailFor :: Language -> SpecWith ()
+pLanguageDirectivesFailFor language =
+  it description $
+    mapM_
+      (parseF pLanguageDirectives)
+      [ header <> "\n\n" <> directives,
+        header <> " " <> directives,
+        "#! magix " <> name <> "\n" <> directives,
+        header <> "\n\n#!",
+        header <> "\n\n#!foo"
+      ]
+  where
+    description = "fails on wrong " <> show language <> " language directives"
+    name = getLanguageNameLowercase language
+    header = "#!magix " <> name
+    directives = getMinimalDirectives language
+
+-- | The directive lines of 'getMinimalDirectiveInput', without the Magix
+-- directive.
+getMinimalDirectives :: Language -> Text
+getMinimalDirectives language =
+  fromMaybe (error $ "getMinimalDirectives: no directives for " <> show language) $
+    stripPrefix ("#!magix " <> getLanguageNameLowercase language <> "\n") input
+  where
+    (input, _) = getMinimalDirectiveInput language
+
+pMinimalDirectivesFor :: Language -> SpecWith ()
+pMinimalDirectivesFor language =
+  it ("parses minimal " <> show language <> " language directives") $
+    uncurry (parseS pLanguageDirectives) (getMinimalDirectiveInput language)
 
 pMinimalFor :: Language -> SpecWith ()
 pMinimalFor language =
@@ -84,35 +115,21 @@ spec = do
       parseF pMagixDirective "#!magic foo"
       parseF pMagixDirective "#!magic"
 
-  -- TODO: Forcce testing of all languages. If `bash` or any other language is
-  -- used somewhere, instead test for all languages.
   describe "pLanguageDirectives" $ do
     it "fails on wrong language directives" $ do
       parseF pLanguageDirectives "#! bar"
       parseF pLanguageDirectives "#!magix foo\n\n#!packages bar"
-      parseF pLanguageDirectives "#!magix bash\n\n#!packages bar"
-      parseF pLanguageDirectives "#!magix bash #!packages bar"
-      parseF pLanguageDirectives "#! magix bash\n#!packages bar"
-      parseF pLanguageDirectives "#!magix bash\n\n#!"
-      parseF pLanguageDirectives "#!magix bash\n\n#!foo"
       parseF pLanguageDirectives "#!magix unknown"
+
+    mapM_ pLanguageDirectivesFailFor languages
 
     mapM_ pEmptyLanguageDirectivesFor languages
 
-    -- TODO: Force testing of all languages.
-    it "parses Bash language directives" $ do
-      parseS pLanguageDirectives "#!magix bash\n#!packages bar" $
-        BashD (BashDirectives ["bar"])
+    mapM_ pMinimalDirectivesFor languages
 
-    it "parses Haskell directives" $ do
+    it "parses Haskell directives with GHC flags only" $
       parseS pLanguageDirectives "#!magix haskell\n#!ghcFlags -threaded" $
         HaskellD (HaskellDirectives [] ["-threaded"])
-      parseS pLanguageDirectives "#!magix haskell\n#!haskellPackages bytestring\n#!ghcFlags -threaded" $
-        HaskellD (HaskellDirectives ["bytestring"] ["-threaded"])
-
-    it "parses Python directives" $ do
-      parseS pLanguageDirectives "#!magix python\n#!pythonPackages requests" $
-        PythonD (PythonDirectives ["requests"])
 
   describe "pDirectives" $ do
     mapM_ pMinimalFor languages

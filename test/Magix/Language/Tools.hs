@@ -12,9 +12,11 @@
 module Magix.Language.Tools
   ( getEmptyLanguageDirectives,
     getMinimalTestcase,
+    getMinimalDirectiveInput,
   )
 where
 
+import Data.Text (Text)
 import Magix.Language.Bash.Directives (BashDirectives (..))
 import Magix.Language.Directives (LanguageDirectives (..))
 import Magix.Language.Haskell.Directives (HaskellDirectives (..))
@@ -39,4 +41,18 @@ getMinimalTestcase Haskell =
 getMinimalTestcase Python =
   ( "test-scripts/python/minimal",
     PythonD (PythonDirectives ["numpy"])
+  )
+
+getMinimalDirectiveInput :: Language -> (Text, LanguageDirectives)
+getMinimalDirectiveInput Bash =
+  ( "#!magix bash\n#!packages bar",
+    BashD (BashDirectives ["bar"])
+  )
+getMinimalDirectiveInput Haskell =
+  ( "#!magix haskell\n#!haskellPackages bytestring\n#!ghcFlags -threaded",
+    HaskellD (HaskellDirectives ["bytestring"] ["-threaded"])
+  )
+getMinimalDirectiveInput Python =
+  ( "#!magix python\n#!pythonPackages requests",
+    PythonD (PythonDirectives ["requests"])
   )
