@@ -4,8 +4,60 @@ set -e
 
 LANGUAGES=("bash" "haskell" "python")
 
+# The tests run with coverage in their own build directory: coverage changes
+# the configuration of the library, and in the default build directory every
+# later 'cabal run magix' would rebuild it.
+COVERAGE_BUILDDIR=dist-coverage
+
+# Print the coverage of each library module by both test suites, the least
+# covered first. It shows where tests are thin, and is no target. A module no
+# test suite links has no coverage data; it is listed first, and the total
+# leaves it out.
+print_coverage_report() {
+  local build mix package modules tix report
+  build=$(echo "${COVERAGE_BUILDDIR}"/build/*/*/magix-*)
+  mix="${build}/build/extra-compilation-artifacts/hpc/vanilla/mix"
+  package=$(ls "${mix}")
+  # Leave out the module Cabal generates.
+  modules=$(printf '%s\n' "${mix}/${package}"/*.mix | sed 's|.*/||; s|\.mix$||' | grep -vx Paths_magix)
+  tix="${COVERAGE_BUILDDIR}/magix.tix"
+  hpc sum --union --include="${package}:" --exclude="${package}:Paths_magix" \
+    --output="${tix}" "${build}"/t/*/hpc/vanilla/tix/*.tix
+  report=$(hpc report --per-module --hpcdir="${mix}" "${tix}")
+  awk -v prefix="${package}/" -v modules="${modules}" '
+    function cell(n, d) { return d == 0 ? sprintf("%15s", "-") : sprintf("%4d%% %9s", 100 * n / d, n "/" d) }
+    function row(m) { return sprintf("%-34s %s %s %s", m, cell(en, ed), cell(an, ad), cell(tn, td)) }
+    function counts() { s = $NF; gsub(/[()]/, "", s); split(s, c, "/") }
+    function flush() {
+      if (m == "") return
+      linked[m]
+      print (ed == 0 ? 101 : 100 * en / ed) "\t" row(m) | sorted
+      sen += en; sed += ed; san += an; sad += ad; stn += tn; std += td
+    }
+    BEGIN {
+      sorted = "sort -n -k1,1 -k2,2 | cut -f2-"
+      printf "%-34s %15s %15s %15s\n", "Module", "Expressions", "Alternatives", "Top-level"
+    }
+    /^-----<module / { flush(); m = substr($2, length(prefix) + 1); sub(/>-----$/, "", m) }
+    / expressions used / { counts(); en = c[1]; ed = c[2] }
+    / alternatives used / { counts(); an = c[1]; ad = c[2] }
+    / top-level declarations used / { counts(); tn = c[1]; td = c[2] }
+    END {
+      flush()
+      n = split(modules, all, "\n")
+      for (i = 1; i <= n; i++)
+        if (!(all[i] in linked))
+          printf "-1\t%-34s %47s\n", all[i], "not linked by any test suite" | sorted
+      close(sorted)
+      en = sen; ed = sed; an = san; ad = sad; tn = stn; td = std
+      print row("Total")
+    }
+  ' <<<"${report}"
+}
+
 echo "Cleaning up"
 cabal clean
+rm -rf "${COVERAGE_BUILDDIR}"
 
 echo "Updating"
 cabal update
@@ -13,8 +65,11 @@ cabal update
 echo "Building"
 cabal build
 
-echo "Testing"
-cabal test
+echo "Testing with coverage"
+cabal test --enable-coverage --builddir "${COVERAGE_BUILDDIR}"
+
+echo "Coverage of the library by the test suites"
+print_coverage_report
 
 check_sample_scripts() {
   # Sample scripts.
