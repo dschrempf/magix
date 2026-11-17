@@ -119,8 +119,9 @@ Magix-specific environment variables:
 Nix environment variables:
   NIX_PATH
     Used to find Nixpkgs when neither '--nixpkgs-path' nor 'MAGIX_NIXPKGS_REF'
-    is set: the first entry providing it, 'nixpkgs=<path>' or an unprefixed
-    directory '<dir>' holding '<dir>/nixpkgs'.
+    is set: the first entry providing an existing path, 'nixpkgs=<path>' or an
+    unprefixed directory '<dir>' holding '<dir>/nixpkgs', with symbolic links
+    resolved.
     A 'flake:<id>' target resolves through the user and the system flake
     registry to the path of a 'path' entry. magix does not read the global
     registry, and fails on other targets, such as 'channel:' and URL targets.

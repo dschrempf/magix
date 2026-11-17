@@ -30,7 +30,7 @@ import Data.Char (isSpace)
 import Data.List (intercalate, isPrefixOf, stripPrefix)
 import Data.Void (Void)
 import Magix.Env (NixEnv (..), nixEnvDesc)
-import System.Directory (doesPathExist)
+import System.Directory (canonicalizePath, doesPathExist)
 import System.FilePath ((</>))
 import Text.Megaparsec
   ( MonadParsec (takeWhile1P, takeWhileP),
@@ -183,24 +183,37 @@ fixHint alternatives =
 nixPathVar :: String
 nixPathVar = fst nixEnvDesc.nixPath
 
--- | Resolve a single @NIX_PATH@ entry to a Nixpkgs path, if it provides one.
+-- | Resolve a single @NIX_PATH@ entry to the canonical Nixpkgs path, if it
+-- provides one.
 --
 -- A @nixpkgs=<path>@ entry resolves to @<path>@. An unprefixed directory @dir@
--- resolves to @dir/nixpkgs@ if that path exists. A @flake:<ref>@ target
--- resolves to a path through the given function, called for such a target only.
+-- resolves to @dir/nixpkgs@. A @flake:<ref>@ target resolves to a path through
+-- the given function, called for such a target only.
+--
+-- Like Nix (confirmed with @nix-instantiate --find-file@), skip a path that
+-- does not exist, also a dangling symbolic link, but fail on a @flake:@ target
+-- resolving to one. Nix also resolves symbolic links: a channel symlink
+-- resolves to its current store path.
 resolveNixpkgs ::
   (String -> IO (Either String FilePath)) ->
   NixPathEntry ->
   IO (Either EntryError (Maybe FilePath))
 resolveNixpkgs resolveFlake e = case e of
-  Prefixed "nixpkgs" t -> fmap Just <$> resolveTarget t
+  Prefixed "nixpkgs" t -> resolveTarget t
   Prefixed _ _ -> pure $ Right Nothing
-  Unprefixed t -> resolveTarget t >>= traverse findIn
+  Unprefixed t -> resolveTarget t >>= traverse (maybe (pure Nothing) (canonicalIfExists . (</> "nixpkgs")))
   where
-    resolveTarget (TargetPath p) = pure $ Right p
-    resolveTarget (TargetFlake r) = first (FlakeEntry e) <$> resolveFlake r
+    resolveTarget (TargetPath p) = Right <$> canonicalIfExists p
+    resolveTarget (TargetFlake r) =
+      resolveFlake r >>= \case
+        Left why -> pure $ Left $ FlakeEntry e why
+        Right p ->
+          maybe (Left $ FlakeEntry e $ "it resolves to " <> p <> ", which does not exist") (Right . Just)
+            <$> canonicalIfExists p
     resolveTarget (TargetRemote _) = pure $ Left $ RemoteEntry e
-    findIn dir = do
-      let candidate = dir </> "nixpkgs"
-      exists <- doesPathExist candidate
-      pure $ if exists then Just candidate else Nothing
+
+-- | The canonical path, if the path exists.
+canonicalIfExists :: FilePath -> IO (Maybe FilePath)
+canonicalIfExists p = do
+  exists <- doesPathExist p
+  if exists then Just <$> canonicalizePath p else pure Nothing

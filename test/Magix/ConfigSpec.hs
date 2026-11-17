@@ -17,6 +17,7 @@ where
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.Text (Text)
+import Magix.BuildMode (BuildMode (..))
 import Magix.Config (Config (..), getConfig)
 import Magix.Env (MagixEnv (..), NixEnv (..))
 import Magix.Hash (getSlotHash)
@@ -89,6 +90,23 @@ getConfigWith fx r xs p =
     xs
     (Just r)
 
+-- | Build against the Nixpkgs found in the given @NIX_PATH@.
+getChannelConfig :: Fixture -> String -> IO Config
+getChannelConfig fx nixPath =
+  getConfig
+    Options
+      { verbosity = Info,
+        forceBuild = ReuseBuildIfAvailable,
+        cachePath = Just fx.cache,
+        buildMode = Nothing,
+        magixEnv = MagixEnv Nothing,
+        nixEnv = NixEnv (Just nixPath) Nothing Nothing Nothing,
+        scriptPath = fx.script,
+        scriptArgs = []
+      }
+    contents
+    Nothing
+
 getConfigOf :: Fixture -> FilePath -> IO Config
 getConfigOf fx = getConfigWith fx ref contents
 
@@ -149,3 +167,20 @@ spec = do
       c <- getConfigRelative fx
       c' <- withCurrentDirectory fx.linkDir $ getConfigWith fx "nixpkgs" contents "run"
       c'.magixHash `shouldNotBe` c.magixHash
+
+  describe "getConfig (NIX_PATH)" $ do
+    it "hashes a Nixpkgs path as the target of its symbolic link" $ do
+      fx <- getFixture
+      nixpkgs <- getRandomTempDir >>= canonicalizePath
+      createDirectory (nixpkgs </> "target")
+      createSymbolicLink (nixpkgs </> "target") (nixpkgs </> "link")
+      c <- getChannelConfig fx $ "nixpkgs=" <> (nixpkgs </> "link")
+      c' <- getChannelConfig fx $ "nixpkgs=" <> (nixpkgs </> "target")
+      c.buildMode `shouldBe` ChannelBuild (nixpkgs </> "target")
+      c.magixHash `shouldBe` c'.magixHash
+
+    it "skips a Nixpkgs path that does not exist" $ do
+      fx <- getFixture
+      nixpkgs <- getRandomTempDir >>= canonicalizePath
+      c <- getChannelConfig fx $ "nixpkgs=" <> (nixpkgs </> "missing") <> ":nixpkgs=" <> nixpkgs
+      c.buildMode `shouldBe` ChannelBuild nixpkgs
