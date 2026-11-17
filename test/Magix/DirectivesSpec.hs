@@ -14,17 +14,21 @@ module Magix.DirectivesSpec
   )
 where
 
+import Control.Monad (forM_)
+import Data.Either (isRight)
 import Data.Maybe (fromMaybe)
-import Data.Text (Text, stripPrefix, unlines)
+import Data.Text (Text, intercalate, stripPrefix, unlines, unpack)
 import Data.Text.IO (readFile)
-import Magix.Directives (Directives (..), pDirectives, pLanguageDirectives, pMagixDirective, pNixpkgsDirective, pShebang)
+import Magix.Directives (Directives (..), getDirectives, pDirectives, pLanguageDirectives, pMagixDirective, pNixpkgsDirective, pShebang)
 import Magix.Language.Bash.Directives (BashDirectives (..))
 import Magix.Language.Directives (LanguageDirectives (..))
 import Magix.Language.Haskell.Directives (HaskellDirectives (..))
 import Magix.Language.Language (Language (..), getLanguageNameLowercase)
 import Magix.Language.Tools (getEmptyLanguageDirectives, getMinimalDirectiveInput, getMinimalTestcase)
-import Magix.Tools (parseF, parseS)
-import Test.Hspec (Spec, SpecWith, describe, it)
+import Magix.Tools (parseF, parseFContaining, parseS)
+import System.Directory (listDirectory)
+import System.FilePath ((</>))
+import Test.Hspec (Spec, SpecWith, describe, it, shouldSatisfy)
 import Prelude hiding (readFile, unlines)
 
 languages :: [Language]
@@ -126,6 +130,10 @@ spec = do
     mapM_ pEmptyLanguageDirectivesFor languages
 
     mapM_ pMinimalDirectivesFor languages
+
+    it "fails on a language name with a tail" $ do
+      parseF pLanguageDirectives "#!magix bashful"
+      parseF pLanguageDirectives "#!magix bashful\necho"
 
     it "parses Haskell directives with GHC flags only" $
       parseS pLanguageDirectives "#!magix haskell\n#!ghcFlags -threaded" $
@@ -231,6 +239,40 @@ spec = do
               language = BashD (BashDirectives ["jq"])
             }
         )
+
+    it "fails on a directive line with an invalid tail" $
+      parseF pDirectives $
+        unlines ["#!/usr/bin/env magix", "#!magix bash", "#!packages jq\DELfoo", "", "jq --help"]
+
+    it "fails on a Magix directive with a tail" $
+      parseF pDirectives $
+        unlines ["#!/usr/bin/env magix", "#!magix bashful", "", "echo"]
+
+    it "fails on CRLF line endings, naming them" $ do
+      let crlf = intercalate "\r\n"
+      -- One directive.
+      parseFContaining pDirectives (crlf ["#!/usr/bin/env magix", "#!magix bash", "", "echo"]) "CRLF"
+      -- Two directives.
+      parseFContaining
+        pDirectives
+        (crlf ["#!/usr/bin/env magix", "#!magix bash", "#!packages jq", "", "jq --help"])
+        "CRLF"
+      -- An LF shebang line, CRLF after it: magix used to parse the first of
+      -- these, leaving a carriage return in the body.
+      parseFContaining pDirectives ("#!/usr/bin/env magix\n" <> crlf ["#!magix bash", "", "echo"]) "CRLF"
+      parseFContaining
+        pDirectives
+        ("#!/usr/bin/env magix\n" <> crlf ["#!magix bash", "#!packages jq", "#!packages yq", "", "jq --help"])
+        "CRLF"
+
+    it "parses every sample script" $
+      forM_ languages $ \language -> do
+        let dir = "test-scripts" </> unpack (getLanguageNameLowercase language)
+        fns <- listDirectory dir
+        forM_ fns $ \fn -> do
+          let path = dir </> fn
+          x <- readFile path
+          (path, getDirectives path x) `shouldSatisfy` (isRight . snd)
 
   describe "pNixpkgsDirective" $ do
     it "parses a Nixpkgs Flake ref" $ do

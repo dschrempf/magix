@@ -15,6 +15,7 @@ module Magix.Tools
     getRandomFakeFlakeConfig,
     parseS,
     parseF,
+    parseFContaining,
     testExpression,
     testFlakeExpression,
   )
@@ -24,6 +25,7 @@ import Control.Monad (replicateM)
 import Data.Bifunctor (Bifunctor (first))
 import Data.ByteString (ByteString, pack)
 import Data.Either (isLeft)
+import Data.List qualified as L
 import Data.Text (Text, isInfixOf, unwords)
 import Magix.BuildMode (BuildMode (..))
 import Magix.Config (Config (..))
@@ -114,6 +116,16 @@ parseF ::
   s ->
   Expectation
 parseF p x = first errorBundlePretty (parse p "" x) `shouldSatisfy` isLeft
+
+-- | The parse fails with an error message containing the given text.
+parseFContaining ::
+  (HasCallStack, VisualStream s, TraversableStream s, ShowErrorComponent e, Show b) =>
+  Parsec e s b ->
+  s ->
+  String ->
+  Expectation
+parseFContaining p x m =
+  first errorBundlePretty (parse p "" x) `shouldSatisfy` either (m `L.isInfixOf`) (const False)
 
 allReplacementsUsed :: Text -> [(Text, Text)] -> Bool
 allReplacementsUsed x = all (\(r, _) -> r `isInfixOf` x)
