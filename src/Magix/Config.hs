@@ -14,6 +14,7 @@
 module Magix.Config
   ( BuildMode (..),
     Config (..),
+    resolveBuildMode,
     getConfig,
     getCacheDir,
   )

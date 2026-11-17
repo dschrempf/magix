@@ -14,21 +14,24 @@ module Magix.Language.Common.Directives
     pValue,
     pDirectiveWithValue,
     pDirectiveWithValues,
+    pLineEnd,
     pManyDirectives,
   )
 where
 
 import Control.Applicative (Alternative (..))
+import Control.Monad (void)
 import Data.Text (Text, pack)
 import Data.Void (Void)
 import Text.Megaparsec
-  ( Parsec,
+  ( MonadParsec (eof, hidden, lookAhead),
+    Parsec,
     chunk,
-    sepEndBy,
     sepEndBy1,
   )
 import Text.Megaparsec.Char
   ( alphaNumChar,
+    char,
     hspace,
     hspace1,
     newline,
@@ -50,5 +53,15 @@ pDirectiveWithValue d p = pDirective d *> hspace1 *> p
 pDirectiveWithValues :: Text -> Parser [Text]
 pDirectiveWithValues d = pDirectiveWithValue d (sepEndBy1 pValue hspace)
 
+-- | The end of a directive line: inline white space, then a newline or the end
+-- of input. A carriage return fails with a message naming CRLF line endings.
+pLineEnd :: Parser ()
+pLineEnd = hspace *> (void newline <|> eof <|> pCarriageReturn)
+  where
+    pCarriageReturn =
+      hidden (lookAhead (char '\r'))
+        *> fail "a carriage return ends the directive line; magix needs LF, not CRLF, line endings"
+
+-- | Directive lines, each ending with 'pLineEnd'.
 pManyDirectives :: (Monoid b) => Parser b -> Parser b
-pManyDirectives p = mconcat <$> sepEndBy p (hspace <* newline)
+pManyDirectives p = mconcat <$> many (p <* pLineEnd)

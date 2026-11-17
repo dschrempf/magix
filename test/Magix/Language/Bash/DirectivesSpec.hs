@@ -16,7 +16,7 @@ where
 
 import Data.Text (Text, unlines)
 import Magix.Language.Bash.Directives (BashDirectives (..), pBashDirectives)
-import Magix.Tools (parseF, parseS)
+import Magix.Tools (parseF, parseFContaining, parseS)
 import Test.Hspec (Spec, describe, it)
 import Prelude hiding (unlines)
 
@@ -45,6 +45,14 @@ spec = do
 
     it "parses more interesting sample directives with multiple declarations" $ do
       parseS pBashDirectives multiple $ BashDirectives ["a", "b", "c", "d", "e", "f"]
+
+    it "fails on a directive line with an invalid tail" $ do
+      parseF pBashDirectives "#!packages jq\DELfoo"
+      parseF pBashDirectives "#!packages jq\DELfoo\n#!packages yq"
+
+    it "fails on CRLF line endings, naming them" $ do
+      parseFContaining pBashDirectives "#!packages jq\r\n" "CRLF"
+      parseFContaining pBashDirectives "#!packages jq\r\n#!packages yq\r\n" "CRLF"
 
     it "fails on invalid directives" $ do
       parseF pBashDirectives $ "#!package foo" -- Wrong keyword

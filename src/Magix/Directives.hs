@@ -16,6 +16,7 @@ module Magix.Directives
     pNixpkgsDirective,
     pLanguageDirectives,
     pDirectives,
+    DirectivesParseError,
     getDirectives,
   )
 where
@@ -23,7 +24,7 @@ where
 import Control.Exception (Exception)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Text (Text)
-import Magix.Language.Common.Directives (Parser, pDirectiveWithValue, pValue)
+import Magix.Language.Common.Directives (Parser, pDirectiveWithValue, pLineEnd, pValue)
 import Magix.Language.Directives (LanguageDirectives, getDirectivesParser)
 import Magix.Language.Language (Language (..), getLanguageNameLowercase)
 import Text.Megaparsec
@@ -35,7 +36,7 @@ import Text.Megaparsec
     parse,
     try,
   )
-import Text.Megaparsec.Char (hspace, newline, space, string)
+import Text.Megaparsec.Char (hspace, space, string)
 import Prelude hiding (readFile)
 
 pShebang :: Parser Text
@@ -61,6 +62,7 @@ data Directives = Directives
 pLanguageDirectives :: Parser LanguageDirectives
 pLanguageDirectives = do
   language <- pMagixDirective
+  pLineEnd
   directives <- getDirectivesParser language
   notFollowedBy $ space *> chunk "#!"
   pure directives
@@ -68,9 +70,8 @@ pLanguageDirectives = do
 pDirectives :: Parser Directives
 pDirectives = do
   _ <- pShebang
-  _ <- hspace
-  _ <- newline
-  nixpkgsRef <- optional (try (pNixpkgsDirective <* newline))
+  pLineEnd
+  nixpkgsRef <- optional (try pNixpkgsDirective <* pLineEnd)
   langDirs <- pLanguageDirectives
   pure $
     Directives

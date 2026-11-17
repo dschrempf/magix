@@ -60,9 +60,33 @@ network: CI runs it, `cabal test` does not.
 
 When the coverage report lands, add it to `Tests` in `CLAUDE.md`.
 
-## Status
+## Outcome
 
-(1), (6) and (7) merged on 2026-11-17 (`cfd6721`). (7) holds a property
-pending on `directive-line-ignores-an-invalid-tail`; `NIX_PATH` parser
-properties are still to write. Open: (2)–(5), the `temporary` switch for
-`test/`, and the coverage report.
+(1), (6) and (7) merged on 2026-11-17 (`cfd6721`); the rest on 2026-11-17 in
+the branch `test/tests-cover-build-options-and-main`, one pull request:
+
+- (2) `test/Magix/StubNix.hs` writes stub `nix-build` and `nix` scripts and
+  puts them first on `PATH`; `BuildSpec` covers the build, a superseded build,
+  a failed build and a forced one. It runs in the `nix build` sandbox too.
+- (3) `resolveCommand` is the pure core of `getCommand`; `OptionsSpec` runs
+  `rawCommandParser` through `execParserPure`.
+- (4) `resolveBuildMode` is exported and tested. There is no unparsable
+  `NIX_PATH`: the parser is total (see
+  `nixpkgs-path-option-accepts-a-missing-path`).
+- (5) `Magix.Main` holds `runMagix`, which returns the executable, and
+  `cleanCache`; `app/Main.hs` keeps the logger and the `executeFile`, and
+  `Magix.Run` is gone. `MainSpec` covers the reuse path, `-f`, an edited
+  script, a Flake directive, the parse, decode and read failures, and both
+  clean modes.
+- (7) `NIX_PATH` parser properties; `directive-line-ignores-an-invalid-tail`
+  is fixed and its property un-pended.
+- `withTempDir` and `withFakeConfig` (`temporary`) replace
+  `getRandomTempDir`; `random` is no test dependency anymore.
+- `check` prints the per-module coverage of both suites, built in
+  `dist-coverage` so that `cabal run` does not rebuild; `CLAUDE.md` says so.
+
+Each new test was checked to fail with the behavior it covers reverted. The
+defects they found are todos: `failed-forced-rebuild-keeps-the-build`,
+`flag-before-clean-magix-cache-runs-a-script`,
+`nixpkgs-path-option-accepts-a-missing-path`,
+`unreadable-script-error-names-no-reason`.

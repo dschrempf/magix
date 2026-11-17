@@ -10,20 +10,22 @@
 --
 -- Creation date: Mon Oct 21 21:56:26 2024.
 module Magix.Tools
-  ( getRandomTempDir,
-    getRandomFakeConfig,
-    getRandomFakeFlakeConfig,
+  ( withTempDir,
+    withFakeConfig,
+    withFakeFlakeConfig,
+    setFakeHash,
     parseS,
     parseF,
+    parseFContaining,
     testExpression,
     testFlakeExpression,
   )
 where
 
-import Control.Monad (replicateM)
 import Data.Bifunctor (Bifunctor (first))
-import Data.ByteString (ByteString, pack)
+import Data.ByteString (ByteString)
 import Data.Either (isLeft)
+import Data.List qualified as L
 import Data.Text (Text, isInfixOf, unwords)
 import Magix.BuildMode (BuildMode (..))
 import Magix.Config (Config (..))
@@ -39,9 +41,9 @@ import Magix.Paths
     getResultLinkPath,
     getSlotDir,
   )
-import System.Directory (createDirectory, createDirectoryIfMissing, getTemporaryDirectory)
+import System.Directory (canonicalizePath, createDirectoryIfMissing)
 import System.FilePath ((</>))
-import System.Random.Stateful (randomIO, randomRIO)
+import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec (Expectation, HasCallStack, Spec, describe, it, shouldBe, shouldSatisfy)
 import Text.Megaparsec
   ( Parsec,
@@ -53,51 +55,52 @@ import Text.Megaparsec
   )
 import Prelude hiding (unwords)
 
-getRandomString :: IO String
-getRandomString = replicateM 40 $ randomRIO ('a', 'z')
+-- | Run the action in a fresh temporary directory, which is removed afterwards.
+-- The path is canonical, so that resolved paths match it.
+withTempDir :: (FilePath -> IO a) -> IO a
+withTempDir action = withSystemTempDirectory "magix" $ \dir -> canonicalizePath dir >>= action
 
-getRandomByteString :: IO ByteString
-getRandomByteString = pack <$> replicateM 40 randomIO
-
--- | Create a new directory in the temporary directory.
-getRandomTempDir :: IO FilePath
-getRandomTempDir = do
-  dir <- ("magix-" <>) <$> getRandomString
-  tmp <- (</> dir) <$> getTemporaryDirectory
-  createDirectory tmp
-  pure tmp
-
-getRandomFakeConfig :: IO Config
-getRandomFakeConfig = do
-  tmp <- getRandomTempDir
-  hsh <- getRandomByteString
+-- | A configuration of a script in a fresh temporary directory, with its cache
+-- and slot directories; the script does not exist.
+withFakeConfig :: (Config -> IO a) -> IO a
+withFakeConfig action = withTempDir $ \tmp -> do
   let invokedPath = tmp </> "fakeScriptPath"
       scriptName = "fakeScriptName"
       cacheDir = tmp </> "fakeCacheDir"
       slotDir = getSlotDir cacheDir (getSlotHash invokedPath) scriptName
-      buildDir = getBuildDir slotDir hsh
   createDirectoryIfMissing True slotDir
-  pure $
-    Config
-      { invokedPath = invokedPath,
-        scriptPath = invokedPath,
-        scriptName = scriptName,
-        buildMode = ChannelBuild (tmp </> "fakeNixpkgsPath"),
-        magixHash = hsh,
-        cacheDir = cacheDir,
-        cacheLockPath = getCacheLockPath cacheDir,
-        slotDir = slotDir,
-        lockPath = getLockPath slotDir,
-        invokedPathLink = getInvokedPathLink slotDir,
-        buildDir = buildDir,
-        buildExprPath = getBuildExprPath buildDir,
-        resultLinkPath = getResultLinkPath slotDir hsh
-      }
+  action $
+    setFakeHash "fakeHash" $
+      Config
+        { invokedPath = invokedPath,
+          scriptPath = invokedPath,
+          scriptName = scriptName,
+          buildMode = ChannelBuild (tmp </> "fakeNixpkgsPath"),
+          magixHash = "",
+          cacheDir = cacheDir,
+          cacheLockPath = getCacheLockPath cacheDir,
+          slotDir = slotDir,
+          lockPath = getLockPath slotDir,
+          invokedPathLink = getInvokedPathLink slotDir,
+          buildDir = "",
+          buildExprPath = "",
+          resultLinkPath = ""
+        }
 
-getRandomFakeFlakeConfig :: Text -> IO Config
-getRandomFakeFlakeConfig ref = do
-  c <- getRandomFakeConfig
-  pure c {buildMode = FlakeBuild ref}
+withFakeFlakeConfig :: Text -> (Config -> IO a) -> IO a
+withFakeFlakeConfig ref action = withFakeConfig $ \c -> action c {buildMode = FlakeBuild ref}
+
+-- | Set the hash of the contents, and the paths of the build named by it.
+setFakeHash :: ByteString -> Config -> Config
+setFakeHash hsh c =
+  c
+    { magixHash = hsh,
+      buildDir = buildDir,
+      buildExprPath = getBuildExprPath buildDir,
+      resultLinkPath = getResultLinkPath c.slotDir hsh
+    }
+  where
+    buildDir = getBuildDir c.slotDir hsh
 
 parseS ::
   (HasCallStack, Show a, Eq a) =>
@@ -115,6 +118,16 @@ parseF ::
   Expectation
 parseF p x = first errorBundlePretty (parse p "" x) `shouldSatisfy` isLeft
 
+-- | The parse fails with an error message containing the given text.
+parseFContaining ::
+  (HasCallStack, VisualStream s, TraversableStream s, ShowErrorComponent e, Show b) =>
+  Parsec e s b ->
+  s ->
+  String ->
+  Expectation
+parseFContaining p x m =
+  first errorBundlePretty (parse p "" x) `shouldSatisfy` either (m `L.isInfixOf`) (const False)
+
 allReplacementsUsed :: Text -> [(Text, Text)] -> Bool
 allReplacementsUsed x = all (\(r, _) -> r `isInfixOf` x)
 
@@ -127,16 +140,16 @@ containsSpaceSeparatedValues xs = isInfixOf (unwords xs)
 testFlakeExpression :: Text -> LanguageDirectives -> [[Text]] -> Spec
 testFlakeExpression ref directives values = do
   describe (withName "getReplacements (Flake)") $ do
-    it "all replacements should be used as placeholders in the language template" $ do
-      config <- getRandomFakeFlakeConfig ref
-      templ <- getTemplate language
-      allReplacementsUsed templ (getReplacements config directives) `shouldBe` True
+    it "all replacements should be used as placeholders in the language template" $
+      withFakeFlakeConfig ref $ \config -> do
+        templ <- getTemplate language
+        allReplacementsUsed templ (getReplacements config directives) `shouldBe` True
 
   describe (withName "getNixExpression (Flake)") $ do
-    it "all placeholders in language template should be replaced" $ do
-      config <- getRandomFakeFlakeConfig ref
-      expr <- getNixExpression config directives
-      expr `shouldSatisfy` doesNotContainTemplates
+    it "all placeholders in language template should be replaced" $
+      withFakeFlakeConfig ref $ \config -> do
+        expr <- getNixExpression config directives
+        expr `shouldSatisfy` doesNotContainTemplates
 
   describe (withName "getFlakeWrapper (Flake)") $ do
     it "Flake wrapper contains the Nixpkgs reference" $ do
@@ -148,10 +161,10 @@ testFlakeExpression ref directives values = do
       wrapper `shouldSatisfy` doesNotContainTemplates
 
   describe (withName "getNixExpression (Flake)") $ do
-    it "works correctly for some sample data" $ do
-      config <- getRandomFakeFlakeConfig ref
-      expr <- getNixExpression config directives
-      sequence_ [expr `shouldSatisfy` containsSpaceSeparatedValues value | value <- values]
+    it "works correctly for some sample data" $
+      withFakeFlakeConfig ref $ \config -> do
+        expr <- getNixExpression config directives
+        sequence_ [expr `shouldSatisfy` containsSpaceSeparatedValues value | value <- values]
   where
     language = getLanguage directives
     withName xs = "[" <> show language <> "] " <> xs
@@ -159,22 +172,22 @@ testFlakeExpression ref directives values = do
 testExpression :: LanguageDirectives -> [[Text]] -> Spec
 testExpression directives values = do
   describe (withName "getReplacements") $ do
-    it "all replacements should be used as placeholders in the templates" $ do
-      config <- getRandomFakeConfig
-      templ <- getTemplate language
-      allReplacementsUsed templ (getReplacements config directives) `shouldBe` True
+    it "all replacements should be used as placeholders in the templates" $
+      withFakeConfig $ \config -> do
+        templ <- getTemplate language
+        allReplacementsUsed templ (getReplacements config directives) `shouldBe` True
 
   describe (withName "getNixExpression") $ do
-    it "all placeholders in templates should be replaced" $ do
-      config <- getRandomFakeConfig
-      expr <- getNixExpression config directives
-      expr `shouldSatisfy` doesNotContainTemplates
+    it "all placeholders in templates should be replaced" $
+      withFakeConfig $ \config -> do
+        expr <- getNixExpression config directives
+        expr `shouldSatisfy` doesNotContainTemplates
 
   describe (withName "getNixExpression") $ do
-    it "works correctly for some sample data" $ do
-      config <- getRandomFakeConfig
-      expr <- getNixExpression config directives
-      sequence_ [expr `shouldSatisfy` containsSpaceSeparatedValues value | value <- values]
+    it "works correctly for some sample data" $
+      withFakeConfig $ \config -> do
+        expr <- getNixExpression config directives
+        sequence_ [expr `shouldSatisfy` containsSpaceSeparatedValues value | value <- values]
   where
     language = getLanguage directives
     withName xs = "[" <> show language <> "] " <> xs

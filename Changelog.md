@@ -30,6 +30,10 @@
   after upgrading
 - Build against the Nixpkgs in the cache hash: `nix-build` used `<nixpkgs>`
   from `$NIX_PATH`, also when `--nixpkgs-path` named another
+- A directive line must end after its values: magix read `#!magix bashful`
+  as `bash`, and `#!packages jq` followed by an invalid character as `jq`,
+  leaving the rest of the line to the script body. A directive line ending in
+  CRLF fails with a message naming CRLF line endings
 
 # Version 1.0.0.0
 

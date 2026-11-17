@@ -14,34 +14,16 @@ module Main
   )
 where
 
-import Control.Exception (onException, throwIO)
 import Control.Monad (forM_)
-import Data.ByteString (readFile)
-import Data.Text (unpack)
-import Data.Text.Encoding (decodeUtf8')
+import GHC.IO.Encoding (setLocaleEncoding)
 import Magix
-  ( BuildStatus (..),
-    CleanMode (..),
-    CleanOptions (..),
+  ( CleanOptions (..),
     Command (..),
-    Config,
-    Directives (..),
-    LanguageDirectives,
     Options (..),
-    Rebuild (..),
     Verbosity (..),
-    build,
-    getBuildStatus,
-    getCacheDir,
+    cleanCache,
     getCommand,
-    getConfig,
-    getDirectives,
-    getNixExpression,
-    removeCacheContents,
-    removeStaleEntries,
-    resolveResult,
-    runScript,
-    withBuildLock,
+    runMagix,
   )
 import System.Console.ANSI
   ( Color (Green, Red, White),
@@ -51,8 +33,7 @@ import System.Console.ANSI
     SGR (Reset, SetColor, SetConsoleIntensity),
     setSGRCode,
   )
-import System.Exit (exitFailure, exitSuccess)
-import GHC.IO.Encoding (setLocaleEncoding)
+import System.Exit (exitSuccess)
 import System.IO (Handle, hSetEncoding, mkTextEncoding, stderr, stdout)
 import System.Log.Formatter (tfLogFormatter)
 import System.Log.Handler (setFormatter)
@@ -61,7 +42,6 @@ import System.Log.Logger
   ( Logger,
     Priority (..),
     getLogger,
-    logL,
     removeHandler,
     rootLoggerName,
     saveGlobalLogger,
@@ -69,7 +49,7 @@ import System.Log.Logger
     setLevel,
     updateGlobalLogger,
   )
-import Prelude hiding (readFile)
+import System.Posix.Process (executeFile)
 
 withFormatter :: GenericHandler Handle -> GenericHandler Handle
 withFormatter handler = setFormatter handler formatter
@@ -108,81 +88,6 @@ setupLogger v = do
   saveGlobalLogger logger
   pure logger
 
-newBuild :: Config -> LanguageDirectives -> IO ()
-newBuild conf dirs = do
-  logger <- getLogger mainLogger
-  let logD = logL logger DEBUG
-  logD "Getting Magix Nix expression"
-  expr <- getNixExpression conf dirs
-  logD $ "Magix Nix expression:\n" <> unpack expr
-  logD "Building Magix Nix expression"
-  build logger conf expr
-  logD "Built Magix Nix expression"
-
-cleanCache :: CleanOptions -> IO ()
-cleanCache opts = do
-  logger <- setupLogger opts.verbosity
-  let logI = logL logger INFO
-  cacheDir <- getCacheDir opts.cachePath
-  case opts.cleanMode of
-    RemoveAll -> do
-      logI $ "Cleaning Magix cache: " <> cacheDir
-      removeCacheContents logger cacheDir
-    RemoveStale -> do
-      logI $ "Removing stale entries from Magix cache: " <> cacheDir
-      removeStaleEntries logger cacheDir
-  logI "Done"
-  exitSuccess
-
-runMagix :: Options -> IO ()
-runMagix opts = do
-  logger <- setupLogger opts.verbosity
-  let logD = logL logger DEBUG
-      logI = logL logger INFO
-      logE = logL logger ERROR
-  logD $ "Options are: " <> show opts
-
-  let path = scriptPath opts
-  logD $ "Reading script at path: " <> path
-  scriptBytes <-
-    readFile path `onException` do
-      logE $ "Could not read file: " <> path
-      exitFailure
-
-  logD "Decoding script file"
-  scriptTxt <- case decodeUtf8' scriptBytes of
-    Left e -> logE "Failed decoding script file" >> throwIO e
-    Right t -> logD "Successfully decoded script file" >> pure t
-
-  logD "Parsing directives"
-  directives <- case getDirectives path scriptTxt of
-    Left e -> logE "Failed parsing directives" >> throwIO e
-    Right result -> do
-      logD $ "Successfully parsed directives: " <> show result
-      pure result
-
-  conf <- getConfig opts scriptBytes directives.nixpkgsRef
-  logD $ "Magix configuration is " <> show conf
-
-  result <- withBuildLock logger conf $ do
-    case forceBuild opts of
-      ForceBuild -> do
-        logI "Forcing build"
-        newBuild conf directives.language
-      ReuseBuildIfAvailable -> do
-        logD "Reusing build if available"
-        logD "Checking build status"
-        buildStatus <- getBuildStatus conf
-        case buildStatus of
-          HasBeenBuilt ->
-            logI "Script has already been built"
-          NeedToBuild ->
-            logI "Need to build" >> newBuild conf directives.language
-    resolveResult conf
-
-  logI $ "Build complete, executing script: " <> result
-  runScript opts conf result
-
 -- | Nix writes UTF-8 regardless of the locale; ROUNDTRIP passes invalid bytes
 -- through instead of failing.
 setUtf8Encoding :: IO ()
@@ -197,5 +102,11 @@ main = do
   setUtf8Encoding
   cmd <- getCommand
   case cmd of
-    Clean opts -> cleanCache opts
-    Run opts -> runMagix opts
+    Clean opts -> do
+      logger <- setupLogger opts.verbosity
+      cleanCache logger opts
+      exitSuccess
+    Run opts -> do
+      logger <- setupLogger opts.verbosity
+      exe <- runMagix logger opts
+      executeFile exe False opts.scriptArgs Nothing

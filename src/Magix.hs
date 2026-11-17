@@ -39,8 +39,9 @@ module Magix
     -- Cache.
     removeCacheContents,
     removeStaleEntries,
-    -- Run.
-    runScript,
+    -- Main.
+    runMagix,
+    cleanCache,
     -- Languages.
     Directives (..),
     LanguageDirectives,
@@ -55,6 +56,7 @@ import Magix.Directives (Directives (..), getDirectives)
 import Magix.Env (MagixEnv (..), NixEnv (..))
 import Magix.Expression (getNixExpression)
 import Magix.Language.Directives (LanguageDirectives)
+import Magix.Main (cleanCache, runMagix)
 import Magix.Options
   ( CleanMode (..),
     CleanOptions (..),
@@ -64,4 +66,3 @@ import Magix.Options
     Verbosity (..),
     getCommand,
   )
-import Magix.Run (runScript)
