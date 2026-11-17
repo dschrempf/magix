@@ -138,6 +138,7 @@ test-suite test-magix
     Magix.Language.Python.ExpressionSpec
     Magix.Language.Tools
     Magix.NixpkgsPathSpec
+    Magix.StubNix
     Magix.Tools
 
   autogen-modules:
