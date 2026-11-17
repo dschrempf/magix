@@ -69,11 +69,11 @@ The cache holds one slot per path a script is invoked by (absolute, symlinks unr
 
 ## Compiler Settings
 
-All targets use `-Wall -Werror -Wunused-packages -Wredundant-constraints` with `GHC2021`. Default extensions: `DuplicateRecordFields`, `OverloadedRecordDot`, `OverloadedStrings`.
+All targets use `-Wall -Werror -Wunused-packages -Wredundant-constraints` with `GHC2024`. Default extensions: `DuplicateRecordFields`, `OverloadedRecordDot`, `OverloadedStrings`.
 
 ## Tests
 
-Work merges to `main` without review, so the tests are the gate. A change
+Pull requests merge without review (see Branches), so the tests are the gate. A change
 that can break behavior ships a test that fails without it; check that by
 reverting the change and running the test. A tiny change, or one whose test
 would only restate the code, needs none: judge which. A test that needs the
@@ -85,3 +85,10 @@ spots and not a target.
 ## Commits
 
 Conventional Commits: `type(scope): statement`, e.g. `fix(cache): …`, `docs(ai): …`. The scope names a module (`run`, `cache`, `directives`, a language) or `flake`, `ai`, `readme`, `changelog`. Older history mixes styles (`tooling: update nix flake`, bare sentences); new commits don't follow it.
+
+## Branches
+
+Changes reach `main` through a pull request, merged once CI
+(`.github/workflows/haskell.yml`) passes on it; commit to `main` directly only
+when asked. Keep branches short-lived. A pull request may carry several changes,
+such as the branches of agents working in parallel.
