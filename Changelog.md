@@ -19,6 +19,11 @@
 - The flake a script builds with in flake mode no longer takes the unpinned
   `flake-utils` input, which `nix build` fetched on the first build of every
   script; it builds for every system in `nixpkgs.lib.systems.flakeExposed`
+- Resolve a `flake:<id>` entry of `$NIX_PATH`, which a flake-built NixOS
+  sets, to its store path through the user and the system flake registry, as
+  Nix does: a Nixpkgs update now rebuilds a cached script. magix split such
+  an entry in two and hashed its text. It fails on an id these registries do
+  not map to a path, and on a `channel:` or URL entry
 
 # Version 1.0.0.0
 

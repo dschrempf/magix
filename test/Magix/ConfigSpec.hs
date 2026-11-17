@@ -82,7 +82,7 @@ getConfigWith fx r xs p =
         cachePath = Just fx.cache,
         buildMode = Nothing,
         magixEnv = MagixEnv Nothing,
-        nixEnv = NixEnv Nothing,
+        nixEnv = NixEnv Nothing Nothing Nothing Nothing,
         scriptPath = p,
         scriptArgs = []
       }

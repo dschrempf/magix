@@ -175,7 +175,7 @@ pNixpkgsPath =
       ( metavar "NIXPKGS_PATH"
           <> long "nixpkgs-path"
           <> short 'n'
-          <> help "Path of Nixpkgs channel to use (default: extracted from '$NIX_PATH')"
+          <> help "Path of Nixpkgs to use (default: found in '$NIX_PATH', see below)"
       )
 
 pNixpkgsRef :: Parser (Maybe String)
