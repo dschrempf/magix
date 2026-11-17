@@ -16,12 +16,13 @@ module Magix.Language.Common.Expression
 where
 
 import Data.Text (Text, pack)
-import Magix.Config (Config (..))
 
 type Replacement = (Text, Text)
 
-getCommonReplacements :: Config -> [Replacement]
-getCommonReplacements c =
-  [ ("__SCRIPT_NAME__", pack $ scriptName c),
+-- | The replacements of the script name, and of its source: the file @script@
+-- next to the expression.
+getCommonReplacements :: String -> [Replacement]
+getCommonReplacements scriptName =
+  [ ("__SCRIPT_NAME__", pack scriptName),
     ("__SCRIPT_SOURCE__", "./script")
   ]

@@ -17,18 +17,18 @@ module Magix.Config
     resolveBuildMode,
     getConfig,
     getCacheDir,
+    getScriptName,
   )
 where
 
 import Control.Applicative ((<|>))
-import Control.Exception (throwIO)
 import Data.ByteString (ByteString)
 import Data.Text (Text)
 import Magix.BuildMode (BuildMode (..))
 import Magix.Env (NixEnv (..), nixEnvDesc)
 import Magix.FlakeRegistry (resolveFlakeRef)
 import Magix.Hash (MagixHashContents (..), getMagixHash, getSlotHash)
-import Magix.NixpkgsPath (getDefaultNixpkgsPath, renderEntryError, resolveNixpkgs)
+import Magix.NixpkgsPath (canonicalIfExists, getDefaultNixpkgsPath, renderEntryError, resolveNixpkgs)
 import Magix.Options (Options (..))
 import Magix.Paths
   ( getBuildDir,
@@ -76,11 +76,7 @@ data Config = Config
 getDefaultNixpkgsPathOrFail :: NixEnv (Maybe String) -> IO FilePath
 getDefaultNixpkgsPathOrFail env = case env.nixPath of
   Nothing -> die $ fst nixEnvDesc.nixPath <> " is not set"
-  Just np -> case getDefaultNixpkgsPath np of
-    Left err -> do
-      putStrLn $ "Could not retrieve Nixpkgs path from " <> fst nixEnvDesc.nixPath
-      throwIO err
-    Right entries -> resolveFirst np entries
+  Just np -> resolveFirst np $ getDefaultNixpkgsPath np
   where
     -- Return the first entry resolving to a Nixpkgs path.
     resolveFirst np [] =
@@ -94,7 +90,9 @@ getDefaultNixpkgsPathOrFail env = case env.nixPath of
 resolveBuildMode :: Options -> Maybe Text -> IO BuildMode
 resolveBuildMode opts mDirectiveRef =
   case (FlakeBuild <$> mDirectiveRef) <|> opts.buildMode of
-    Just (ChannelBuild p) -> ChannelBuild <$> canonicalizePath p
+    Just (ChannelBuild p) ->
+      canonicalIfExists p
+        >>= maybe (die $ "Cannot use the Nixpkgs path '" <> p <> "' of '--nixpkgs-path': it does not exist.") (pure . ChannelBuild)
     Just (FlakeBuild r) -> pure $ FlakeBuild r
     Nothing -> ChannelBuild <$> getDefaultNixpkgsPathOrFail opts.nixEnv
 
@@ -104,7 +102,7 @@ getConfig opts scriptContents mDirectiveRef = do
   scriptPath <- canonicalizePath p
   cacheDir <- getCacheDir opts.cachePath
   buildMode <- resolveBuildMode opts mDirectiveRef
-  let scriptName = takeBaseName p
+  let scriptName = getScriptName p
       magixHash =
         getMagixHash $
           MagixHashContents
@@ -121,6 +119,10 @@ getConfig opts scriptContents mDirectiveRef = do
   pure $ Config {..}
   where
     p = opts.scriptPath
+
+-- | The name of the script, and of its executable: the base name of its path.
+getScriptName :: FilePath -> String
+getScriptName = takeBaseName
 
 getCacheDir :: Maybe FilePath -> IO FilePath
 getCacheDir mCachePath = maybe (getUserCacheDir "magix") canonicalizePath mCachePath

@@ -88,7 +88,7 @@ withBuildDir language mode action =
     getLanguage directives.language `shouldBe` language
     copyFile script (dir </> "script")
     let cfg = getConfigIn dir mode
-    getNixExpression cfg directives.language >>= T.writeFile cfg.buildExprPath
+    getNixExpression cfg.scriptName directives.language >>= T.writeFile cfg.buildExprPath
     case mode of
       ChannelBuild _ -> pure ()
       FlakeBuild ref -> getFlakeWrapper ref >>= T.writeFile (dir </> "flake.nix")

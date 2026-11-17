@@ -15,6 +15,7 @@ module Magix.Paths
     getLockPath,
     getInvokedPathLink,
     getBuildDir,
+    getPendingBuildDir,
     getBuildExprPath,
     getResultLinkPath,
   )
@@ -56,6 +57,11 @@ getInvokedPathLink slotDir = slotDir </> "path"
 
 getBuildDir :: FilePath -> ByteString -> FilePath
 getBuildDir slotDir hash = slotDir </> showHash hash <> "-build"
+
+-- | The directory a build is written to, given the build directory; it
+-- replaces the build directory once Nix succeeds.
+getPendingBuildDir :: FilePath -> FilePath
+getPendingBuildDir buildDir = buildDir <> "-pending"
 
 getBuildExprPath :: FilePath -> FilePath
 getBuildExprPath buildDir = buildDir </> "default.nix"

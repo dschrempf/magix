@@ -83,9 +83,8 @@ magix -h
 ``` text
 Magix version 1.0.0.0
 
-Usage: magix [--version]
-             (COMMAND | [-v|--verbose] [-f|--force-build]
-               [-c|--cache-path CACHE_PATH] [-n|--nixpkgs-path NIXPKGS_PATH]
+Usage: magix [--version] [-v|--verbose] [-c|--cache-path CACHE_PATH]
+             (COMMAND | [-f|--force-build] [-n|--nixpkgs-path NIXPKGS_PATH]
                [-r|--nixpkgs-ref NIXPKGS_REF] SCRIPT_FILE_PATH [SCRIPT_ARGS])
 
   Build, cache, and run possibly compiled scripts with dependencies using the
@@ -95,10 +94,10 @@ Available options:
   --version                Show version
   -h,--help                Show this help text
   -v,--verbose             Print debug messages
-  -f,--force-build         Force build, even when cached build exists
   -c,--cache-path CACHE_PATH
                            Path of cache directory to use for builds (default:
                            '$XDG_CACHE_HOME/magix')
+  -f,--force-build         Force build, even when cached build exists
   -n,--nixpkgs-path NIXPKGS_PATH
                            Path of Nixpkgs to use (default: found in
                            '$NIX_PATH', see below)
@@ -111,6 +110,8 @@ Available options:
 
 Available commands:
   clean-magix-cache        Clean the Magix cache.
+  print-magix-expression   Print the Nix expression building the script from the
+                           file 'script' next to the expression; build nothing.
 
 Magix-specific environment variables:
   MAGIX_NIXPKGS_REF
@@ -133,6 +134,39 @@ Nix environment variables:
   NIX_CONF_DIR
     Directory of the system flake registry (default: '/etc/nix').
 ```
+
+# Check scripts in a flake
+
+A flake installing magix scripts can build each of them in a check: `lib.build`
+builds a script with the template and directives magix uses at run time,
+against the given Nixpkgs. It runs `magix print-magix-expression` in a
+derivation and imports the expression (import from derivation).
+
+``` nix
+{
+  inputs.magix.url = "github:dschrempf/magix";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+
+  outputs =
+    { magix, nixpkgs, ... }:
+    let
+      pkgs = nixpkgs.legacyPackages.x86_64-linux;
+    in
+    {
+      checks.x86_64-linux.my-script = magix.lib.build {
+        inherit pkgs;
+        script = ./scripts/my-script;
+      };
+    };
+}
+```
+
+`script` is a path or a store path, such as a derivation. The result holds the
+executable `bin/my-script`. The optional argument `name`
+is the file name magix sees (default: the base name of `script`, without the
+hash of a store path); the executable drops its extension, as with
+`magix my-script.sh`. A `#!nixpkgs` directive is ignored: the build uses
+`pkgs`.
 
 # New languages
 

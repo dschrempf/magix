@@ -269,7 +269,15 @@ check_nixpkgs_path_builds_against_it() {
     fail "the build ignores --nixpkgs-path ${nixpkgs}"
 }
 
+check_flake() {
+  # The checks build the sample scripts through 'lib.build', with the magix of
+  # the flake; CI built it in the step before.
+  echo "Checking the flake"
+  nix flake check --print-build-logs
+}
+
 check_sample_scripts
+check_flake
 check_nixpkgs_path_builds_against_it
 check_flake_nix_path_entry
 check_c_locale

@@ -92,7 +92,7 @@ spec = do
   describe "getDefaultNixpkgsPath" $ do
     it "parses NIX_PATH into its entries" $ do
       getDefaultNixpkgsPath "other=/x:nixpkgs=/path/to/nixpkgs"
-        `shouldBe` Right [Prefixed "other" (TargetPath "/x"), Prefixed "nixpkgs" (TargetPath "/path/to/nixpkgs")]
+        `shouldBe` [Prefixed "other" (TargetPath "/x"), Prefixed "nixpkgs" (TargetPath "/path/to/nixpkgs")]
 
   describe "resolveNixpkgs" $ do
     it "resolves a 'nixpkgs=' entry to its path" $ do

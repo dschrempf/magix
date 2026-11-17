@@ -113,6 +113,7 @@ executable magix
     , base           >=4.7 && <5
     , hslogger
     , magix
+    , text
     , unix
 
 test-suite test-magix

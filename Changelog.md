@@ -1,5 +1,9 @@
 # Unreleased
 
+- Add `print-magix-expression`, printing the Nix expression of a script
+  without building it, and the flake function `lib.build { pkgs, script }`,
+  building a script through it in a derivation, for the checks of a flake
+  installing magix scripts
 - Keep one build per script: the cache holds a slot per path a script is
   invoked by, and a build removes the build it supersedes. A deploy that moves
   an unchanged script (a new store path behind the same invoked path) no
@@ -10,6 +14,9 @@
 - `clean-magix-cache` no longer fails before the first build created the
   cache directory
 - `clean-magix-cache` waits for running builds instead of removing their files
+- `-v` and `-c` before `clean-magix-cache` apply to it; magix ran a script
+  named `clean-magix-cache` instead. After the command, `-c` wins over the one
+  before it
 - Read the build output of Nix as UTF-8 under any locale; magix failed
   with `hGetContents: invalid argument` where `LANG` was unset or `C`
 - The flake's `packages.magix` (and `default`) is the executable alone
@@ -34,6 +41,12 @@
   as `bash`, and `#!packages jq` followed by an invalid character as `jq`,
   leaving the rest of the line to the script body. A directive line ending in
   CRLF fails with a message naming CRLF line endings
+- `--nixpkgs-path` fails early, naming the path, if the path does not exist;
+  the error surfaced only in `nix-build`
+- A failed forced rebuild (`-f`) keeps the previous build; magix removed it
+  before calling Nix, so the script was unusable until a build succeeded
+- An unreadable script logs the reason (missing, a directory, no permission);
+  Ctrl-C while magix reads it is no longer turned into exit code 1
 
 # Version 1.0.0.0
 

@@ -15,14 +15,17 @@ module Main
 where
 
 import Control.Monad (forM_)
+import Data.Text.IO qualified as T
 import GHC.IO.Encoding (setLocaleEncoding)
 import Magix
   ( CleanOptions (..),
     Command (..),
     Options (..),
+    PrintOptions (..),
     Verbosity (..),
     cleanCache,
     getCommand,
+    getScriptExpression,
     runMagix,
   )
 import System.Console.ANSI
@@ -105,6 +108,10 @@ main = do
     Clean opts -> do
       logger <- setupLogger opts.verbosity
       cleanCache logger opts
+      exitSuccess
+    Print opts -> do
+      logger <- setupLogger opts.verbosity
+      getScriptExpression logger opts >>= T.putStr
       exitSuccess
     Run opts -> do
       logger <- setupLogger opts.verbosity

@@ -21,6 +21,7 @@ import Magix.Build (BuildStatus (..), build, getBuildStatus, resolveResult, with
 import Magix.Cache (readInvokedPath)
 import Magix.Config (BuildMode (..), Config (..))
 import Magix.Expression (getFlakeWrapper)
+import Magix.Paths (getPendingBuildDir)
 import Magix.StubNix (Call (..), Outcome (..), StubNix, getStoreDir, readCalls, setOutcome, withStubNix)
 import Magix.Tools (setFakeHash, withFakeConfig)
 import System.Directory
@@ -90,7 +91,7 @@ spec = do
         readCalls stub
           `shouldReturn` [ Call
                              "nix-build"
-                             ["-I", "nixpkgs=/nixpkgs", "--out-link", c.resultLinkPath, c.buildDir]
+                             ["-I", "nixpkgs=/nixpkgs", "--out-link", c.resultLinkPath, getPendingBuildDir c.buildDir]
                          ]
 
     it "builds a Flake through the wrapper" $
@@ -104,7 +105,7 @@ spec = do
         readCalls stub
           `shouldReturn` [ Call
                              "nix"
-                             ["build", "--no-write-lock-file", "--out-link", c.resultLinkPath, c.buildDir]
+                             ["build", "--no-write-lock-file", "--out-link", c.resultLinkPath, getPendingBuildDir c.buildDir]
                          ]
 
     it "removes the build a build of other contents supersedes" $
@@ -127,7 +128,20 @@ spec = do
         getResultLinks c `shouldReturn` [takeFileName c.resultLinkPath]
         getBuildStatus c `shouldReturn` HasBeenBuilt
         doesDirectoryExist c.buildDir `shouldReturn` True
+        doesPathExist c'.buildDir `shouldReturn` False
+        doesPathExist (getPendingBuildDir c'.buildDir) `shouldReturn` False
         resolveResult c `shouldReturn` result
+
+    it "fails, and keeps the previous build, when Nix fails a rebuild of the same contents" $
+      withScript $ \stub c -> do
+        buildLocked c
+        result <- resolveResult c
+        setOutcome stub Fail
+        buildLocked c `shouldThrow` (== ExitFailure 1)
+        getBuildStatus c `shouldReturn` HasBeenBuilt
+        resolveResult c `shouldReturn` result
+        readFile c.buildExprPath `shouldReturn` expr
+        doesPathExist (getPendingBuildDir c.buildDir) `shouldReturn` False
 
     it "replaces the build of the same contents" $
       withScript $ \_ c -> do
