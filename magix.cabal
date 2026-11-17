@@ -77,10 +77,10 @@ library
     Magix.Language.Language
     Magix.Language.Python.Directives
     Magix.Language.Python.Expression
+    Magix.Main
     Magix.NixpkgsPath
     Magix.Options
     Magix.Paths
-    Magix.Run
 
   hs-source-dirs:  src
   other-modules:   Paths_magix
@@ -99,7 +99,6 @@ library
     , optparse-applicative
     , process
     , text
-    , unix
     , xdg-basedir
 
 executable magix
@@ -112,10 +111,9 @@ executable magix
   build-depends:
     , ansi-terminal
     , base           >=4.7 && <5
-    , bytestring
     , hslogger
     , magix
-    , text
+    , unix
 
 test-suite test-magix
   import:             common, test
@@ -137,6 +135,7 @@ test-suite test-magix
     Magix.Language.Python.DirectivesSpec
     Magix.Language.Python.ExpressionSpec
     Magix.Language.Tools
+    Magix.MainSpec
     Magix.NixpkgsPathPropertiesSpec
     Magix.NixpkgsPathSpec
     Magix.OptionsSpec
