@@ -1,5 +1,5 @@
 -- |
--- Module      :  Magix.BuidMode
+-- Module      :  Magix.BuildMode
 -- Description :  Build mode selection
 -- Copyright   :  2026 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
