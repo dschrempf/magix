@@ -62,6 +62,7 @@ When the coverage report lands, add it to `Tests` in `CLAUDE.md`.
 
 ## Status
 
-`flake-nix-path-entry-resolves-to-a-store-path` merged on 2026-11-17, so
-(2)–(5), the `temporary` switch and the coverage report can start. (1), (6)
-and (7) are on branch `test/hashes-templates-properties`.
+(1), (6) and (7) merged on 2026-11-17 (`cfd6721`). (7) holds a property
+pending on `directive-line-ignores-an-invalid-tail`; `NIX_PATH` parser
+properties are still to write. Open: (2)–(5), the `temporary` switch for
+`test/`, and the coverage report.
