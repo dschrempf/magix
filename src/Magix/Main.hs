@@ -11,22 +11,23 @@
 -- Creation date: Fri Oct 18 09:12:06 2024.
 module Magix.Main
   ( runMagix,
+    getScriptExpression,
     cleanCache,
   )
 where
 
 import Control.Exception (displayException, throwIO, try)
-import Data.ByteString (readFile)
-import Data.Text (unpack)
+import Data.ByteString (ByteString, readFile)
+import Data.Text (Text, unpack)
 import Data.Text.Encoding (decodeUtf8')
 import GHC.IO.Exception (IOException (..))
 import Magix.Build (BuildStatus (..), build, getBuildStatus, resolveResult, withBuildLock)
 import Magix.Cache (removeCacheContents, removeStaleEntries)
-import Magix.Config (Config (..), getCacheDir, getConfig)
+import Magix.Config (Config (..), getCacheDir, getConfig, getScriptName)
 import Magix.Directives (Directives (..), getDirectives)
 import Magix.Expression (getNixExpression)
 import Magix.Language.Directives (LanguageDirectives)
-import Magix.Options (CleanMode (..), CleanOptions (..), Options (..), Rebuild (..))
+import Magix.Options (CleanMode (..), CleanOptions (..), Options (..), PrintOptions (..), Rebuild (..))
 import System.Exit (exitFailure)
 import System.FilePath ((</>))
 import System.Log.Logger (Logger, Priority (..), logL)
@@ -36,7 +37,7 @@ newBuild :: Logger -> Config -> LanguageDirectives -> IO ()
 newBuild logger conf dirs = do
   let logD = logL logger DEBUG
   logD "Getting Magix Nix expression"
-  expr <- getNixExpression conf dirs
+  expr <- getNixExpression conf.scriptName dirs
   logD $ "Magix Nix expression:\n" <> unpack expr
   logD "Building Magix Nix expression"
   build logger conf expr
@@ -56,18 +57,19 @@ cleanCache logger opts = do
       removeStaleEntries logger cacheDir
   logI "Done"
 
--- | Build the script, or reuse its build, and return its executable.
+data Script = Script
+  { contents :: !ByteString,
+    directives :: !Directives
+  }
+
+-- | Read the script, and parse its directives.
 --
 -- Log the reason and exit with failure if the script cannot be read; throw
 -- if it cannot be decoded, or its directives cannot be parsed.
-runMagix :: Logger -> Options -> IO FilePath
-runMagix logger opts = do
+readScript :: Logger -> FilePath -> IO Script
+readScript logger path = do
   let logD = logL logger DEBUG
-      logI = logL logger INFO
       logE = logL logger ERROR
-  logD $ "Options are: " <> show opts
-
-  let path = opts.scriptPath
   logD $ "Reading script at path: " <> path
   scriptBytes <-
     try (readFile path) >>= \case
@@ -89,8 +91,32 @@ runMagix logger opts = do
     Right result -> do
       logD $ "Successfully parsed directives: " <> show result
       pure result
+  pure $ Script scriptBytes directives
 
-  conf <- getConfig opts scriptBytes directives.nixpkgsRef
+-- | The Nix expression building the script; see 'getNixExpression'. Build
+-- nothing, and touch no cache. A @#!nixpkgs@ directive does not enter the
+-- expression: it takes the Nixpkgs as argument.
+--
+-- Fail like 'readScript'.
+getScriptExpression :: Logger -> PrintOptions -> IO Text
+getScriptExpression logger opts = do
+  logL logger DEBUG $ "Options are: " <> show opts
+  script <- readScript logger opts.scriptPath
+  getNixExpression (getScriptName opts.scriptPath) script.directives.language
+
+-- | Build the script, or reuse its build, and return its executable.
+--
+-- Fail like 'readScript'.
+runMagix :: Logger -> Options -> IO FilePath
+runMagix logger opts = do
+  let logD = logL logger DEBUG
+      logI = logL logger INFO
+  logD $ "Options are: " <> show opts
+
+  script <- readScript logger opts.scriptPath
+  let directives = script.directives
+
+  conf <- getConfig opts script.contents directives.nixpkgsRef
   logD $ "Magix configuration is " <> show conf
 
   result <- withBuildLock logger conf $ do

@@ -20,7 +20,6 @@ where
 import Data.Foldable qualified as Foldable
 import Data.Text (Text, replace)
 import Data.Text.IO (readFile)
-import Magix.Config (Config (..))
 import Magix.Language.Common.Expression (Replacement, getCommonReplacements)
 import Magix.Language.Directives (LanguageDirectives, getLanguage)
 import Magix.Language.Expression (getLanguageReplacements)
@@ -34,13 +33,16 @@ getTemplatePath language = "src/Magix/Language/" <> show language <> "/Template.
 getTemplate :: Language -> IO Text
 getTemplate language = getDataFileName (getTemplatePath language) >>= readFile
 
-getReplacements :: Config -> LanguageDirectives -> [Replacement]
-getReplacements c ds = getCommonReplacements c ++ getLanguageReplacements ds
+-- | The replacements of the template, given the script name.
+getReplacements :: String -> LanguageDirectives -> [Replacement]
+getReplacements n ds = getCommonReplacements n ++ getLanguageReplacements ds
 
-getNixExpression :: Config -> LanguageDirectives -> IO Text
-getNixExpression c ds = do
+-- | The Nix expression building the script of the given name, from the file
+-- @script@ next to it.
+getNixExpression :: String -> LanguageDirectives -> IO Text
+getNixExpression n ds = do
   t <- getTemplate $ getLanguage ds
-  pure $ Foldable.foldl' replace' t (getReplacements c ds)
+  pure $ Foldable.foldl' replace' t (getReplacements n ds)
   where
     replace' t (x, y) = replace x y t
 

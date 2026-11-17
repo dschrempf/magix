@@ -15,6 +15,7 @@ module Magix.Options
     Command (..),
     CleanMode (..),
     CleanOptions (..),
+    PrintOptions (..),
     Options (..),
     getCommand,
 
@@ -86,6 +87,13 @@ data CleanOptions = CleanOptions
   }
   deriving (Eq, Show, Generic)
 
+-- | Options of printing the Nix expression of a script.
+data PrintOptions = PrintOptions
+  { verbosity :: !Verbosity,
+    scriptPath :: !FilePath
+  }
+  deriving (Eq, Show, Generic)
+
 data Options = Options
   { verbosity :: !Verbosity,
     forceBuild :: !Rebuild,
@@ -98,7 +106,7 @@ data Options = Options
   }
   deriving (Eq, Show, Generic)
 
-data Command = Clean !CleanOptions | Run !Options
+data Command = Clean !CleanOptions | Print !PrintOptions | Run !Options
   deriving (Eq, Show)
 
 -- | Raw options as parsed from the command line, before validation.
@@ -113,10 +121,10 @@ data RawOptions = RawOptions
   }
   deriving (Eq, Show)
 
-data RawCommand = RawClean !CleanOptions | RawRun !RawOptions
+data RawCommand = RawClean !CleanOptions | RawPrint !PrintOptions | RawRun !RawOptions
   deriving (Eq, Show)
 
--- | The options of both commands.
+-- | The options of every command.
 data SharedOptions = SharedOptions
   { verbosity :: !Verbosity,
     cachePath :: !(Maybe FilePath)
@@ -125,12 +133,17 @@ data SharedOptions = SharedOptions
 -- | The shared options sit outside the alternative, so that they do not commit
 -- it to a run: before @clean-magix-cache@ or the script, they apply to either.
 pRawCommand :: Parser RawCommand
-pRawCommand = (&) <$> pSharedOptions <*> (pCleanCommand <|> pRawOptions)
+pRawCommand = (&) <$> pSharedOptions <*> (pCommand <|> pRawOptions)
   where
-    pCleanCommand =
+    pCommand =
       hsubparser $
-        command "clean-magix-cache" $
-          info pCleanOptions (progDesc "Clean the Magix cache.")
+        command "clean-magix-cache" (info pCleanOptions (progDesc "Clean the Magix cache."))
+          <> command
+            "print-magix-expression"
+            ( info
+                pPrintOptions
+                (progDesc "Print the Nix expression building the script from the file 'script' next to the expression; build nothing.")
+            )
 
 pSharedOptions :: Parser SharedOptions
 pSharedOptions = SharedOptions <$> pLogLevel <*> pCachePath
@@ -143,10 +156,29 @@ pCleanOptions = cleanWith <$> pSharedOptions <*> pCleanMode
     cleanWith after mode before =
       RawClean
         CleanOptions
-          { verbosity = if Debug `elem` [before.verbosity, after.verbosity] then Debug else Info,
+          { verbosity = eitherDebug before.verbosity after.verbosity,
             cachePath = after.cachePath <|> before.cachePath,
             cleanMode = mode
           }
+
+-- | Either position of @--verbose@ applies; @--cache-path@ before the command
+-- does nothing, as it touches no cache.
+pPrintOptions :: Parser (SharedOptions -> RawCommand)
+pPrintOptions = printWith <$> pLogLevel <*> pPrintScriptPath
+  where
+    printWith verbosity path before =
+      RawPrint
+        PrintOptions
+          { verbosity = eitherDebug before.verbosity verbosity,
+            scriptPath = path
+          }
+    pPrintScriptPath =
+      strArgument (metavar "SCRIPT_FILE_PATH" <> help "File path of script to print the Nix expression of")
+
+-- | Debug if either asks for it: the flag before a command, or after it.
+eitherDebug :: Verbosity -> Verbosity -> Verbosity
+eitherDebug Debug _ = Debug
+eitherDebug _ v = v
 
 pCleanMode :: Parser CleanMode
 pCleanMode =
@@ -305,6 +337,7 @@ resolveCommand ::
   NixEnv (Maybe String) ->
   Either String Command
 resolveCommand (RawClean co) _ _ = Right $ Clean co
+resolveCommand (RawPrint po) _ _ = Right $ Print po
 resolveCommand (RawRun raw) magixEnv nixEnv = do
   let mRef = raw.nixpkgsRef <|> magixEnv.nixpkgsRef
   buildMode <- case (raw.nixpkgsPath, mRef) of

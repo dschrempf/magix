@@ -16,24 +16,27 @@ where
 
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as B
+import Control.Exception (bracket)
 import Data.IORef (modifyIORef', newIORef, readIORef)
 import Data.List (isPrefixOf, isSuffixOf, sort)
+import Data.Text qualified as T
 import Data.Text.Encoding.Error (UnicodeException)
 import Magix.BuildMode (BuildMode (..))
 import Magix.Directives (DirectivesParseError)
 import Magix.Env (MagixEnv (..), NixEnv (..))
 import Magix.Hash (getSlotHash)
-import Magix.Main (cleanCache, runMagix)
-import Magix.Options (CleanMode (..), CleanOptions (..), Options (..), Rebuild (..), Verbosity (..))
+import Magix.Main (cleanCache, getScriptExpression, runMagix)
+import Magix.Options (CleanMode (..), CleanOptions (..), Options (..), PrintOptions (PrintOptions), Rebuild (..), Verbosity (..))
 import Magix.Paths (getSlotDir)
 import Magix.StubNix (Call (..), StubNix, getStoreDir, readCalls, withStubNix)
 import Magix.Tools (withTempDir)
-import System.Directory (createDirectory, doesFileExist, listDirectory, removeFile)
+import System.Directory (createDirectory, doesDirectoryExist, doesFileExist, listDirectory, removeFile)
 import System.Exit (ExitCode (..))
 import System.FilePath (takeDirectory, takeFileName, (</>))
 import System.Log.Formatter (nullFormatter)
 import System.Log.Handler.Simple (GenericHandler (..))
 import System.Log.Logger (Logger, Priority (..), getLogger, removeHandler, rootLoggerName, setHandlers, setLevel, updateGlobalLogger)
+import System.Posix.Env (getEnv, setEnv, unsetEnv)
 import Test.Hspec (Spec, describe, it, shouldBe, shouldNotBe, shouldReturn, shouldSatisfy, shouldThrow)
 
 scriptName :: String
@@ -118,6 +121,14 @@ clean cacheDir mode = do
   logger <- getQuietLogger
   cleanCache logger $ CleanOptions {verbosity = Info, cachePath = Just cacheDir, cleanMode = mode}
 
+-- | Run the action with the environment variable set, or unset; restore it
+-- afterwards. The environment is global to the process: run no tests in
+-- parallel to this.
+withEnvVar :: String -> Maybe String -> IO a -> IO a
+withEnvVar name value action = bracket (getEnv name) set $ \_ -> set value >> action
+  where
+    set = maybe (unsetEnv name) (\v -> setEnv name v True)
+
 getPrograms :: StubNix -> IO [String]
 getPrograms stub = map (.program) <$> readCalls stub
 
@@ -199,6 +210,29 @@ spec = do
         createDirectory e.options.scriptPath
         errs <- runLoggingErrors e.options
         errs `shouldSatisfy` isUnreadableError e.options "inappropriate type (is a directory)"
+        readCalls e.stub `shouldReturn` []
+
+  describe "getScriptExpression" $ do
+    it "returns the expression, builds nothing, and touches no cache, without NIX_PATH" $
+      withScript script $ \e -> do
+        let xdgCache = e.cacheDir </> "xdg"
+        expr <-
+          withEnvVar "NIX_PATH" Nothing $
+            withEnvVar "XDG_CACHE_HOME" (Just xdgCache) $ do
+              logger <- getQuietLogger
+              getScriptExpression logger $ PrintOptions Info e.options.scriptPath
+        expr `shouldSatisfy` T.isInfixOf "writeShellApplication"
+        expr `shouldSatisfy` T.isInfixOf ("name = \"" <> T.pack scriptName <> "\"")
+        expr `shouldSatisfy` T.isInfixOf "./script"
+        readCalls e.stub `shouldReturn` []
+        getCacheEntries e.cacheDir `shouldReturn` []
+        doesDirectoryExist xdgCache `shouldReturn` False
+
+    it "throws, and calls no Nix, when the directives fail to parse" $
+      withScript "#!/usr/bin/env magix\necho Hello\n" $ \e -> do
+        logger <- getQuietLogger
+        getScriptExpression logger (PrintOptions Info e.options.scriptPath)
+          `shouldThrow` (\(_ :: DirectivesParseError) -> True)
         readCalls e.stub `shouldReturn` []
 
   describe "cleanCache" $ do

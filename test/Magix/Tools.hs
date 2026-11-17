@@ -143,12 +143,12 @@ testFlakeExpression ref directives values = do
     it "all replacements should be used as placeholders in the language template" $
       withFakeFlakeConfig ref $ \config -> do
         templ <- getTemplate language
-        allReplacementsUsed templ (getReplacements config directives) `shouldBe` True
+        allReplacementsUsed templ (getReplacements config.scriptName directives) `shouldBe` True
 
   describe (withName "getNixExpression (Flake)") $ do
     it "all placeholders in language template should be replaced" $
       withFakeFlakeConfig ref $ \config -> do
-        expr <- getNixExpression config directives
+        expr <- getNixExpression config.scriptName directives
         expr `shouldSatisfy` doesNotContainTemplates
 
   describe (withName "getFlakeWrapper (Flake)") $ do
@@ -163,7 +163,7 @@ testFlakeExpression ref directives values = do
   describe (withName "getNixExpression (Flake)") $ do
     it "works correctly for some sample data" $
       withFakeFlakeConfig ref $ \config -> do
-        expr <- getNixExpression config directives
+        expr <- getNixExpression config.scriptName directives
         sequence_ [expr `shouldSatisfy` containsSpaceSeparatedValues value | value <- values]
   where
     language = getLanguage directives
@@ -175,18 +175,18 @@ testExpression directives values = do
     it "all replacements should be used as placeholders in the templates" $
       withFakeConfig $ \config -> do
         templ <- getTemplate language
-        allReplacementsUsed templ (getReplacements config directives) `shouldBe` True
+        allReplacementsUsed templ (getReplacements config.scriptName directives) `shouldBe` True
 
   describe (withName "getNixExpression") $ do
     it "all placeholders in templates should be replaced" $
       withFakeConfig $ \config -> do
-        expr <- getNixExpression config directives
+        expr <- getNixExpression config.scriptName directives
         expr `shouldSatisfy` doesNotContainTemplates
 
   describe (withName "getNixExpression") $ do
     it "works correctly for some sample data" $
       withFakeConfig $ \config -> do
-        expr <- getNixExpression config directives
+        expr <- getNixExpression config.scriptName directives
         sequence_ [expr `shouldSatisfy` containsSpaceSeparatedValues value | value <- values]
   where
     language = getLanguage directives

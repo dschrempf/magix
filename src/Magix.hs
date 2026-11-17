@@ -15,6 +15,7 @@ module Magix
     Options (..),
     CleanMode (..),
     CleanOptions (..),
+    PrintOptions (..),
     Rebuild (..),
     Verbosity (..),
     getCommand,
@@ -41,6 +42,7 @@ module Magix
     removeStaleEntries,
     -- Main.
     runMagix,
+    getScriptExpression,
     cleanCache,
     -- Languages.
     Directives (..),
@@ -56,11 +58,12 @@ import Magix.Directives (Directives (..), getDirectives)
 import Magix.Env (MagixEnv (..), NixEnv (..))
 import Magix.Expression (getNixExpression)
 import Magix.Language.Directives (LanguageDirectives)
-import Magix.Main (cleanCache, runMagix)
+import Magix.Main (cleanCache, getScriptExpression, runMagix)
 import Magix.Options
   ( CleanMode (..),
     CleanOptions (..),
     Command (..),
+    PrintOptions (..),
     Options (..),
     Rebuild (..),
     Verbosity (..),
