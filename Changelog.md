@@ -16,6 +16,9 @@
   (`justStaticExecutables`); its closure drops from 3.1 GiB to 74 MiB
 - Resolve `nixpkgs` from unprefixed directories in `$NIX_PATH` (like
   `builtins.findFile`); fixes <https://github.com/dschrempf/magix/issues/18>
+- The flake a script builds with in flake mode no longer takes the unpinned
+  `flake-utils` input, which `nix build` fetched on the first build of every
+  script; it builds for every system in `nixpkgs.lib.systems.flakeExposed`
 
 # Version 1.0.0.0
 
