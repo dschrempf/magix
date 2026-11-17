@@ -9,6 +9,7 @@ From closure measurements of two NixOS systems that install magix
 `tests-cover-build-options-and-main` comes next after the first: work merges
 to `main` without review, so the tests are the gate (2026-11-17).
 
-`parse-error-shows-the-header-alone`, `format-script-formats-all-code`,
+`parse-error-shows-the-header-alone`, `directive-line-ignores-an-invalid-tail`,
+`format-script-formats-all-code`,
 `script-run-by-store-path-keeps-one-build` and
 `slot-of-a-non-ascii-path-ignores-the-locale` have no rank yet.
