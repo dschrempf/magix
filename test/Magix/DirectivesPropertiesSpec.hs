@@ -34,7 +34,7 @@ import Magix.Language.Directives (LanguageDirectives (..))
 import Magix.Language.Haskell.Directives (HaskellDirectives (..))
 import Magix.Language.Language (Language (..), getLanguageNameLowercase)
 import Magix.Language.Python.Directives (PythonDirectives (..))
-import Test.Hspec (Spec, before_, describe, it, pendingWith)
+import Test.Hspec (Spec, describe, it)
 import Test.Hspec.QuickCheck (modifyMaxSuccess)
 import Test.QuickCheck
   ( Gen,
@@ -275,8 +275,5 @@ spec =
           it "rejects a directive line starting with an invalid value" $
             propRejects (genFirst l)
 
-          -- Fails: "#!packages _ \DELP" parses as the package "_", and the rest
-          -- of the line becomes the script body.
-          before_ (pendingWith "directive-line-ignores-an-invalid-tail") $
-            it "rejects a value with an invalid character" $
-              propRejects (genCorruption l arbitrary)
+          it "rejects a value with an invalid character" $
+            propRejects (genCorruption l arbitrary)

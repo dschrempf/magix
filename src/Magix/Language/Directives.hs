@@ -18,14 +18,11 @@ module Magix.Language.Directives
   )
 where
 
-import Control.Applicative (Alternative (..))
 import Magix.Language.Bash.Directives (BashDirectives, pBashDirectives)
 import Magix.Language.Common.Directives (Parser)
 import Magix.Language.Haskell.Directives (HaskellDirectives, pHaskellDirectives)
 import Magix.Language.Language (Language (..))
 import Magix.Language.Python.Directives (PythonDirectives, pPythonDirectives)
-import Text.Megaparsec (try)
-import Text.Megaparsec.Char (newline)
 
 data LanguageDirectives
   = BashD !BashDirectives
@@ -35,11 +32,9 @@ data LanguageDirectives
 
 getDirectivesParser :: Language -> Parser LanguageDirectives
 getDirectivesParser l = case l of
-  Bash -> BashD <$> withNewline pBashDirectives
-  Haskell -> HaskellD <$> withNewline pHaskellDirectives
-  Python -> PythonD <$> withNewline pPythonDirectives
-  where
-    withNewline p = try (newline *> p) <|> mempty
+  Bash -> BashD <$> pBashDirectives
+  Haskell -> HaskellD <$> pHaskellDirectives
+  Python -> PythonD <$> pPythonDirectives
 
 getLanguage :: LanguageDirectives -> Language
 getLanguage (BashD _) = Bash
