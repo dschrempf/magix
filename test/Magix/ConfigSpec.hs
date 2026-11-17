@@ -18,7 +18,7 @@ import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.Text (Text)
 import Magix.BuildMode (BuildMode (..))
-import Magix.Config (Config (..), getConfig)
+import Magix.Config (Config (..), getConfig, resolveBuildMode)
 import Magix.Env (MagixEnv (..), NixEnv (..))
 import Magix.Hash (getSlotHash)
 import Magix.Options (Options (..), Rebuild (..), Verbosity (..))
@@ -32,8 +32,9 @@ import System.Directory
     withCurrentDirectory,
   )
 import System.FilePath ((</>))
+import System.Exit (ExitCode (..))
 import System.Posix (createSymbolicLink)
-import Test.Hspec (Spec, describe, it, shouldBe, shouldNotBe)
+import Test.Hspec (Spec, describe, it, shouldBe, shouldNotBe, shouldReturn, shouldThrow)
 
 -- | A script, a copy of it at another canonical path, and symbolic links to
 -- the script, named other than the script.
@@ -119,8 +120,93 @@ getConfigRelative fx = withCurrentDirectory fx.linkDir $ getConfigOf fx "run"
 deploy :: Fixture -> IO ()
 deploy fx = removeFile fx.link >> createSymbolicLink fx.copy fx.link
 
+-- | Options giving the build mode and @NIX_PATH@.
+optionsWith :: Maybe BuildMode -> Maybe String -> Options
+optionsWith m nixPath =
+  Options
+    { verbosity = Info,
+      forceBuild = ReuseBuildIfAvailable,
+      cachePath = Nothing,
+      buildMode = m,
+      magixEnv = MagixEnv Nothing,
+      nixEnv = NixEnv nixPath Nothing Nothing Nothing,
+      scriptPath = "script",
+      scriptArgs = []
+    }
+
+-- | Resolve the build mode without a @#!nixpkgs@ directive.
+resolveNixPath :: String -> IO BuildMode
+resolveNixPath nixPath = resolveBuildMode (optionsWith Nothing (Just nixPath)) Nothing
+
+-- | A fresh temporary directory, canonical so that resolved paths match it.
+getTempDir :: IO FilePath
+getTempDir = getRandomTempDir >>= canonicalizePath
+
+dies :: ExitCode -> Bool
+dies = (== ExitFailure 1)
+
 spec :: Spec
 spec = do
+  describe "resolveBuildMode" $ do
+    it "prefers the #!nixpkgs directive to the options and NIX_PATH" $ do
+      nixpkgs <- getTempDir
+      let nixPath = Just $ "nixpkgs=" <> nixpkgs
+      resolveBuildMode (optionsWith (Just $ ChannelBuild nixpkgs) nixPath) (Just ref)
+        `shouldReturn` FlakeBuild ref
+      resolveBuildMode (optionsWith (Just $ FlakeBuild "nixpkgs") nixPath) (Just ref)
+        `shouldReturn` FlakeBuild ref
+      resolveBuildMode (optionsWith Nothing Nothing) (Just ref) `shouldReturn` FlakeBuild ref
+
+    it "prefers the options to NIX_PATH" $ do
+      nixpkgs <- getTempDir
+      other <- getTempDir
+      let nixPath = Just $ "nixpkgs=" <> nixpkgs
+      resolveBuildMode (optionsWith (Just $ FlakeBuild ref) nixPath) Nothing
+        `shouldReturn` FlakeBuild ref
+      resolveBuildMode (optionsWith (Just $ ChannelBuild other) nixPath) Nothing
+        `shouldReturn` ChannelBuild other
+      resolveBuildMode (optionsWith (Just $ ChannelBuild other) Nothing) Nothing
+        `shouldReturn` ChannelBuild other
+
+    it "resolves symbolic links in the Nixpkgs path of the options" $ do
+      tmp <- getTempDir
+      createDirectory (tmp </> "target")
+      createSymbolicLink (tmp </> "target") (tmp </> "link")
+      resolveBuildMode (optionsWith (Just $ ChannelBuild $ tmp </> "link") Nothing) Nothing
+        `shouldReturn` ChannelBuild (tmp </> "target")
+
+    it "uses the first NIX_PATH entry providing an existing Nixpkgs" $ do
+      tmp <- getTempDir
+      mapM_ (createDirectory . (tmp </>)) ["other", "empty", "dir", "dir" </> "nixpkgs", "last"]
+      resolveNixPath
+        ( "nixpkgs="
+            <> (tmp </> "missing")
+            <> ":other="
+            <> (tmp </> "other")
+            <> ":"
+            <> (tmp </> "empty")
+            <> ":"
+            <> (tmp </> "dir")
+            <> ":nixpkgs="
+            <> (tmp </> "last")
+        )
+        `shouldReturn` ChannelBuild (tmp </> "dir" </> "nixpkgs")
+      resolveNixPath ("nixpkgs=" <> (tmp </> "other") <> ":nixpkgs=" <> (tmp </> "last"))
+        `shouldReturn` ChannelBuild (tmp </> "other")
+
+    it "fails if NIX_PATH is unset" $
+      resolveBuildMode (optionsWith Nothing Nothing) Nothing `shouldThrow` dies
+
+    it "fails if NIX_PATH provides no existing Nixpkgs" $ do
+      tmp <- getTempDir
+      resolveNixPath "" `shouldThrow` dies
+      resolveNixPath ("other=" <> tmp <> ":" <> tmp <> ":nixpkgs=" <> (tmp </> "missing"))
+        `shouldThrow` dies
+
+    it "fails on a NIX_PATH entry that magix cannot resolve" $ do
+      nixpkgs <- getTempDir
+      resolveNixPath ("nixpkgs=channel:nixos-unstable:nixpkgs=" <> nixpkgs) `shouldThrow` dies
+
   describe "getConfig" $ do
     it "keeps symbolic links in the invoked path and resolves them in the script path" $ do
       fx <- getFixture
