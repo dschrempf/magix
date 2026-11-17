@@ -24,9 +24,7 @@ module Magix.NixpkgsPath
 where
 
 import Control.Applicative (optional)
-import Control.Exception (Exception)
 import Control.Monad (void)
-import Data.Bifunctor (Bifunctor (first))
 import Data.Char (isSpace)
 import Data.List (intercalate, isPrefixOf, stripPrefix)
 import Data.Void (Void)
@@ -134,19 +132,13 @@ pNixPathEntry = do
 pNixPath :: Parser [NixPathEntry]
 pNixPath = optional pSep *> sepEndBy pNixPathEntry pSep <* eof
 
-data NixpkgsPathError = NixpkgsPathError
-  { _nixPath :: !String,
-    _err :: !String
-  }
-  deriving (Eq, Show)
-
-instance Exception NixpkgsPathError
-
 -- | Parse the entries of @NIX_PATH@ (see 'resolveNixpkgs' for resolving one to a
 -- Nixpkgs path).
-getDefaultNixpkgsPath :: String -> Either NixpkgsPathError [NixPathEntry]
+getDefaultNixpkgsPath :: String -> [NixPathEntry]
 getDefaultNixpkgsPath nixPath =
-  first (NixpkgsPathError nixPath . errorBundlePretty) $ parse pNixPath "" nixPath
+  -- 'pNixPath' accepts every string: each character separates entries or
+  -- belongs to one.
+  either (error . ("pNixPath failed: " <>) . errorBundlePretty) id $ parse pNixPath "" nixPath
 
 -- | A @NIX_PATH@ entry that may provide Nixpkgs, but magix cannot resolve.
 data EntryError

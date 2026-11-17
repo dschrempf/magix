@@ -21,7 +21,6 @@ module Magix.Config
 where
 
 import Control.Applicative ((<|>))
-import Control.Exception (throwIO)
 import Data.ByteString (ByteString)
 import Data.Text (Text)
 import Magix.BuildMode (BuildMode (..))
@@ -76,11 +75,7 @@ data Config = Config
 getDefaultNixpkgsPathOrFail :: NixEnv (Maybe String) -> IO FilePath
 getDefaultNixpkgsPathOrFail env = case env.nixPath of
   Nothing -> die $ fst nixEnvDesc.nixPath <> " is not set"
-  Just np -> case getDefaultNixpkgsPath np of
-    Left err -> do
-      putStrLn $ "Could not retrieve Nixpkgs path from " <> fst nixEnvDesc.nixPath
-      throwIO err
-    Right entries -> resolveFirst np entries
+  Just np -> resolveFirst np $ getDefaultNixpkgsPath np
   where
     -- Return the first entry resolving to a Nixpkgs path.
     resolveFirst np [] =
