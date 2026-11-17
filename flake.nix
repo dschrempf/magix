@@ -21,7 +21,10 @@
             selfh: superh:
             supern.haskell.packageOverrides selfh superh
             // {
-              magix = selfh.callCabal2nix "magix" ./. { };
+              # The sandbox has no nix binary for test-magix-nix.
+              magix = supern.haskell.lib.overrideCabal (selfh.callCabal2nix "magix" ./. { }) (_: {
+                testTargets = [ "test-magix" ];
+              });
             };
         };
       };

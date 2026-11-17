@@ -125,8 +125,10 @@ test-suite test-magix
     Magix.BuildSpec
     Magix.CacheSpec
     Magix.ConfigSpec
+    Magix.DirectivesPropertiesSpec
     Magix.DirectivesSpec
     Magix.FlakeRegistrySpec
+    Magix.HashSpec
     Magix.Language.Bash.DirectivesSpec
     Magix.Language.Bash.ExpressionSpec
     Magix.Language.Common.DirectivesSpec
@@ -150,8 +152,28 @@ test-suite test-magix
     , hspec
     , magix
     , megaparsec
+    , QuickCheck
     , random
     , text
     , unix
+
+  build-tool-depends: hspec-discover:hspec-discover
+
+test-suite test-magix-nix
+  import:             common, test
+  main-is:            Spec.hs
+  hs-source-dirs:     test-nix
+  other-modules:      Magix.TemplateSpec
+  ghc-options:        -threaded
+  type:               exitcode-stdio-1.0
+  build-depends:
+    , base       >=4.7 && <5
+    , directory
+    , filepath
+    , hspec
+    , magix
+    , process
+    , temporary
+    , text
 
   build-tool-depends: hspec-discover:hspec-discover
