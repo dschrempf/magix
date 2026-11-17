@@ -138,13 +138,14 @@ test-suite test-magix
     Magix.Language.Python.ExpressionSpec
     Magix.Language.Tools
     Magix.NixpkgsPathSpec
+    Magix.OptionsSpec
     Magix.Tools
 
   autogen-modules:
   ghc-options:        -threaded
   type:               exitcode-stdio-1.0
   build-depends:
-    , base        >=4.7 && <5
+    , base                  >=4.7 && <5
     , bytestring
     , directory
     , filepath
@@ -152,6 +153,7 @@ test-suite test-magix
     , hspec
     , magix
     , megaparsec
+    , optparse-applicative
     , QuickCheck
     , random
     , text
