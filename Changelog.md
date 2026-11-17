@@ -39,6 +39,10 @@
   CRLF fails with a message naming CRLF line endings
 - `--nixpkgs-path` fails early, naming the path, if the path does not exist;
   the error surfaced only in `nix-build`
+- A failed forced rebuild (`-f`) keeps the previous build; magix removed it
+  before calling Nix, so the script was unusable until a build succeeded
+- An unreadable script logs the reason (missing, a directory, no permission);
+  Ctrl-C while magix reads it is no longer turned into exit code 1
 
 # Version 1.0.0.0
 
