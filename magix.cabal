@@ -125,6 +125,7 @@ test-suite test-magix
     Magix.BuildSpec
     Magix.CacheSpec
     Magix.ConfigSpec
+    Magix.DirectivesPropertiesSpec
     Magix.DirectivesSpec
     Magix.FlakeRegistrySpec
     Magix.HashSpec
@@ -151,6 +152,7 @@ test-suite test-magix
     , hspec
     , magix
     , megaparsec
+    , QuickCheck
     , random
     , text
     , unix
