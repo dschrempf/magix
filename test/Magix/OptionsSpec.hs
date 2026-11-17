@@ -136,6 +136,10 @@ spec = do
                 }
           )
 
+    it "parses the shared flags after an option of a run" $
+      rawField (\r -> (r.verbosity, r.cachePath, r.forceBuild)) ["-f", "-c", "/cache", "-v", "script"]
+        `shouldBe` Right (Debug, Just "/cache", ForceBuild)
+
     it "passes the arguments after the script to the script" $
       rawField script ["script", "a", "b"] `shouldBe` Right ("script", ["a", "b"])
 
@@ -177,6 +181,36 @@ spec = do
         parse ["clean-magix-cache", "--stale", "-c", "/cache", "-v"]
           `shouldBe` clean Debug (Just "/cache") RemoveStale
 
+      it "parses --verbose and --cache-path before the command" $ do
+        let r = clean Debug (Just "/cache") RemoveStale
+        parse ["-v", "-c", "/cache", "clean-magix-cache", "--stale"] `shouldBe` r
+        parse ["--verbose", "--cache-path", "/cache", "clean-magix-cache", "--stale"] `shouldBe` r
+        parse ["-c", "/cache", "-v", "clean-magix-cache", "--stale"] `shouldBe` r
+
+      it "parses --verbose and --cache-path on either side of the command" $ do
+        let r = clean Debug (Just "/cache") RemoveAll
+        parse ["-v", "clean-magix-cache", "-c", "/cache"] `shouldBe` r
+        parse ["-c", "/cache", "clean-magix-cache", "-v"] `shouldBe` r
+        parse ["-v", "clean-magix-cache", "-v", "-c", "/cache"] `shouldBe` r
+
+      it "prefers --cache-path after the command to --cache-path before it" $
+        parse ["-c", "/before", "clean-magix-cache", "-c", "/after"]
+          `shouldBe` clean Info (Just "/after") RemoveAll
+
+      it "runs a script of that name after an option of a run" $ do
+        rawField (\r -> (r.forceBuild, script r)) ["-f", "clean-magix-cache", "--stale"]
+          `shouldBe` Right (ForceBuild, ("clean-magix-cache", ["--stale"]))
+        rawField (\r -> (r.nixpkgsPath, script r)) ["-n", "/nixpkgs", "-v", "clean-magix-cache"]
+          `shouldBe` Right (Just "/nixpkgs", ("clean-magix-cache", []))
+        rawField (\r -> (r.nixpkgsRef, script r)) ["-v", "-r", "nixpkgs", "clean-magix-cache"]
+          `shouldBe` Right (Just "nixpkgs", ("clean-magix-cache", []))
+
+      it "runs a script of that name given as a path" $ do
+        rawField script ["./clean-magix-cache", "--stale"]
+          `shouldBe` Right ("./clean-magix-cache", ["--stale"])
+        rawField (\r -> (r.verbosity, script r)) ["-v", "./clean-magix-cache"]
+          `shouldBe` Right (Debug, ("./clean-magix-cache", []))
+
       it "rejects --stale outside clean-magix-cache" $
         parse ["--stale", "script"] `shouldSatisfy` failsWith (ExitFailure 1) "Invalid option"
 
@@ -187,6 +221,10 @@ spec = do
     it "passes clean-magix-cache through" $
       resolve noMagixEnv noNixEnv ["clean-magix-cache", "-v", "--stale"]
         `shouldBe` Right (Clean CleanOptions {verbosity = Debug, cachePath = Nothing, cleanMode = RemoveStale})
+
+    it "passes clean-magix-cache through with the flags before it" $
+      resolve noMagixEnv noNixEnv ["-v", "-c", "/cache", "clean-magix-cache", "--stale"]
+        `shouldBe` Right (Clean CleanOptions {verbosity = Debug, cachePath = Just "/cache", cleanMode = RemoveStale})
 
     it "passes the flags and the environment into the options" $ do
       let magixEnv = MagixEnv (Just "github:NixOS/nixpkgs/nixos-unstable")

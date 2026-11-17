@@ -83,9 +83,8 @@ magix -h
 ``` text
 Magix version 1.0.0.0
 
-Usage: magix [--version]
-             (COMMAND | [-v|--verbose] [-f|--force-build]
-               [-c|--cache-path CACHE_PATH] [-n|--nixpkgs-path NIXPKGS_PATH]
+Usage: magix [--version] [-v|--verbose] [-c|--cache-path CACHE_PATH]
+             (COMMAND | [-f|--force-build] [-n|--nixpkgs-path NIXPKGS_PATH]
                [-r|--nixpkgs-ref NIXPKGS_REF] SCRIPT_FILE_PATH [SCRIPT_ARGS])
 
   Build, cache, and run possibly compiled scripts with dependencies using the
@@ -95,10 +94,10 @@ Available options:
   --version                Show version
   -h,--help                Show this help text
   -v,--verbose             Print debug messages
-  -f,--force-build         Force build, even when cached build exists
   -c,--cache-path CACHE_PATH
                            Path of cache directory to use for builds (default:
                            '$XDG_CACHE_HOME/magix')
+  -f,--force-build         Force build, even when cached build exists
   -n,--nixpkgs-path NIXPKGS_PATH
                            Path of Nixpkgs to use (default: found in
                            '$NIX_PATH', see below)

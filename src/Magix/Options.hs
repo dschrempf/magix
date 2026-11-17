@@ -28,6 +28,7 @@ where
 
 import Control.Applicative ((<|>))
 import Data.Foldable (Foldable (..))
+import Data.Function ((&))
 import Data.Text (pack)
 import Data.Version (showVersion)
 import GHC.Generics (Generic)
@@ -115,17 +116,37 @@ data RawOptions = RawOptions
 data RawCommand = RawClean !CleanOptions | RawRun !RawOptions
   deriving (Eq, Show)
 
+-- | The options of both commands.
+data SharedOptions = SharedOptions
+  { verbosity :: !Verbosity,
+    cachePath :: !(Maybe FilePath)
+  }
+
+-- | The shared options sit outside the alternative, so that they do not commit
+-- it to a run: before @clean-magix-cache@ or the script, they apply to either.
 pRawCommand :: Parser RawCommand
-pRawCommand = pCleanCommand <|> pRawRun
+pRawCommand = (&) <$> pSharedOptions <*> (pCleanCommand <|> pRawOptions)
   where
     pCleanCommand =
       hsubparser $
         command "clean-magix-cache" $
-          info (RawClean <$> pCleanOptions) (progDesc "Clean the Magix cache.")
-    pRawRun = RawRun <$> pRawOptions
+          info pCleanOptions (progDesc "Clean the Magix cache.")
 
-pCleanOptions :: Parser CleanOptions
-pCleanOptions = CleanOptions <$> pLogLevel <*> pCachePath <*> pCleanMode
+pSharedOptions :: Parser SharedOptions
+pSharedOptions = SharedOptions <$> pLogLevel <*> pCachePath
+
+-- | The shared options after @clean-magix-cache@ apply as well; its
+-- @--cache-path@ wins over the one before it.
+pCleanOptions :: Parser (SharedOptions -> RawCommand)
+pCleanOptions = cleanWith <$> pSharedOptions <*> pCleanMode
+  where
+    cleanWith after mode before =
+      RawClean
+        CleanOptions
+          { verbosity = if Debug `elem` [before.verbosity, after.verbosity] then Debug else Info,
+            cachePath = after.cachePath <|> before.cachePath,
+            cleanMode = mode
+          }
 
 pCleanMode :: Parser CleanMode
 pCleanMode =
@@ -136,16 +157,26 @@ pCleanMode =
         <> help "Remove only the builds of scripts that are gone, and entries of an older cache layout"
     )
 
-pRawOptions :: Parser RawOptions
+pRawOptions :: Parser (SharedOptions -> RawCommand)
 pRawOptions =
-  RawOptions
-    <$> pLogLevel
-    <*> pForceBuild
-    <*> pCachePath
+  runWith
+    <$> pForceBuild
     <*> pNixpkgsPath
     <*> pNixpkgsRef
     <*> pScriptPath
     <*> pScriptArgs
+  where
+    runWith rebuild nixpkgsPath nixpkgsRef scriptPath scriptArgs shared =
+      RawRun
+        RawOptions
+          { verbosity = shared.verbosity,
+            forceBuild = rebuild,
+            cachePath = shared.cachePath,
+            nixpkgsPath = nixpkgsPath,
+            nixpkgsRef = nixpkgsRef,
+            scriptPath = scriptPath,
+            scriptArgs = scriptArgs
+          }
 
 pLogLevel :: Parser Verbosity
 pLogLevel =
