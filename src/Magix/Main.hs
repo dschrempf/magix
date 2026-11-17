@@ -44,18 +44,20 @@ newBuild logger conf dirs = do
   logD "Built Magix Nix expression"
 
 -- | Clean the cache.
+--
+-- Log at 'INFO' only a wait for running builds: a timer runs this.
 cleanCache :: Logger -> CleanOptions -> IO ()
 cleanCache logger opts = do
-  let logI = logL logger INFO
+  let logD = logL logger DEBUG
   cacheDir <- getCacheDir opts.cachePath
   case opts.cleanMode of
     RemoveAll -> do
-      logI $ "Cleaning Magix cache: " <> cacheDir
+      logD $ "Cleaning Magix cache: " <> cacheDir
       removeCacheContents logger cacheDir
     RemoveStale -> do
-      logI $ "Removing stale entries from Magix cache: " <> cacheDir
+      logD $ "Removing stale entries from Magix cache: " <> cacheDir
       removeStaleEntries logger cacheDir
-  logI "Done"
+  logD "Done"
 
 data Script = Script
   { contents :: !ByteString,
@@ -106,6 +108,9 @@ getScriptExpression logger opts = do
 
 -- | Build the script, or reuse its build, and return its executable.
 --
+-- Log at 'INFO' only a build, which may take minutes while its output is
+-- captured: a script standing in for a program runs silently from its cache.
+--
 -- Fail like 'readScript'.
 runMagix :: Logger -> Options -> IO FilePath
 runMagix logger opts = do
@@ -130,10 +135,11 @@ runMagix logger opts = do
         buildStatus <- getBuildStatus conf
         case buildStatus of
           HasBeenBuilt ->
-            logI "Script has already been built"
-          NeedToBuild ->
-            logI "Need to build" >> newBuild logger conf directives.language
+            logD "Script has already been built"
+          NeedToBuild -> do
+            logI $ "Building script: " <> opts.scriptPath
+            newBuild logger conf directives.language
     resolveResult conf
 
-  logI $ "Build complete, executing script: " <> result
+  logD $ "Build complete, executing script: " <> result
   pure $ result </> "bin" </> conf.scriptName
