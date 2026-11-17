@@ -1,0 +1,74 @@
+-- |
+-- Module      :  Magix.HashSpec
+-- Description :  Golden values of the cache hashes
+-- Copyright   :  2026 Dominik Schrempf
+-- License     :  GPL-3.0-or-later
+--
+-- Maintainer  :  dominik.schrempf@gmail.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Creation date: Tue Nov 17 14:00:00 2026.
+--
+-- A changed hash rebuilds every cached script (`getMagixHash`) or orphans its
+-- slot (`getSlotHash`). Changing a golden value is deliberate, and the
+-- Changelog says so. `getMagixHash` includes the version of magix, so a
+-- version bump changes its golden values.
+module Magix.HashSpec
+  ( spec,
+  )
+where
+
+import Data.ByteString (ByteString)
+import Data.ByteString.Builder (byteStringHex, toLazyByteString)
+import Data.ByteString.Lazy.Char8 (unpack)
+import Magix.BuildMode (BuildMode (..))
+import Magix.Hash (MagixHashContents (..), getMagixHash, getSlotHash)
+import Test.Hspec (Spec, describe, it, shouldBe)
+
+toHex :: ByteString -> String
+toHex = unpack . toLazyByteString . byteStringHex
+
+channel :: BuildMode
+channel = ChannelBuild "/nix/store/00000000000000000000000000000000-source"
+
+-- | Under a UTF-8 locale, GHC decodes @ä@ to one character.
+channelNonAscii :: BuildMode
+channelNonAscii = ChannelBuild "/home/dä/nixpkgs"
+
+flake :: BuildMode
+flake = FlakeBuild "github:NixOS/nixpkgs/nixos-unstable"
+
+flakeNonAscii :: BuildMode
+flakeNonAscii = FlakeBuild "path:/home/dä/nixpkgs"
+
+script :: ByteString
+script = "#!/usr/bin/env magix\n#!magix bash\n\necho Hello\n"
+
+magixHash :: BuildMode -> ByteString -> String
+magixHash m xs = toHex $ getMagixHash $ MagixHashContents {buildMode = m, scriptContents = xs}
+
+golden :: String -> String -> String -> Spec
+golden label actual expected = it label $ actual `shouldBe` expected
+
+spec :: Spec
+spec = do
+  describe "getMagixHash" $ do
+    golden "channel build, empty script" (magixHash channel "") $
+      "9984bd22bb88d312eabf033bfaf2c90cb94ef03fd079df4f0ee86c97294e9b0b"
+    golden "channel build" (magixHash channel script) $
+      "a49fc45a56a5a6e21d5b64bffc5789e094e960bd66993fd2354310006dc42c64"
+    golden "channel build, non-ASCII path" (magixHash channelNonAscii script) $
+      "fab93020e5729eb890bd4ec04f02fb84580cb2ca463fab7c36ea952b1935a97f"
+    golden "flake build, empty script" (magixHash flake "") $
+      "2acd30338b1a158132b5d3d5a6b894858fe45f8222f8d4b1360fac853eaa9487"
+    golden "flake build" (magixHash flake script) $
+      "26559d6fa2326d1d781b44bd8224e9386ca89a785d6bb0730d3c29ef3a0bc30a"
+    golden "flake build, non-ASCII reference" (magixHash flakeNonAscii script) $
+      "ce55d1960a5eb93082c584cb96abe73bc08537cb8fa175d8b2c628927d18bc34"
+
+  describe "getSlotHash" $ do
+    golden "ASCII path" (toHex $ getSlotHash "/home/user/bin/script") $
+      "25d5c612fc5bc3e302a23db95c3d52491aa76812296687a8268656d9e671fabd"
+    golden "non-ASCII path" (toHex $ getSlotHash "/home/dä/bin/script") $
+      "311284e4e73403cfe13ce8ba5e6a8e327e9c2e23facb593a09d564da35700128"

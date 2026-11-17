@@ -127,6 +127,7 @@ test-suite test-magix
     Magix.ConfigSpec
     Magix.DirectivesSpec
     Magix.FlakeRegistrySpec
+    Magix.HashSpec
     Magix.Language.Bash.DirectivesSpec
     Magix.Language.Bash.ExpressionSpec
     Magix.Language.Common.DirectivesSpec
