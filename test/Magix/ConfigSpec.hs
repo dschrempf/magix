@@ -166,6 +166,14 @@ spec = do
       resolveBuildMode (optionsWith (Just $ ChannelBuild $ tmp </> "link") Nothing) Nothing
         `shouldReturn` ChannelBuild (tmp </> "target")
 
+    it "fails if the Nixpkgs path of the options does not exist" $ withTempDir $ \tmp -> do
+      createSymbolicLink (tmp </> "missing") (tmp </> "dangling")
+      let nixPath = Just $ "nixpkgs=" <> tmp
+      resolveBuildMode (optionsWith (Just $ ChannelBuild $ tmp </> "missing") nixPath) Nothing
+        `shouldThrow` dies
+      resolveBuildMode (optionsWith (Just $ ChannelBuild $ tmp </> "dangling") nixPath) Nothing
+        `shouldThrow` dies
+
     it "uses the first NIX_PATH entry providing an existing Nixpkgs" $ withTempDir $ \tmp -> do
       mapM_ (createDirectory . (tmp </>)) ["other", "empty", "dir", "dir" </> "nixpkgs", "last"]
       resolveNixPath

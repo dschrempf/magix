@@ -37,6 +37,8 @@
   as `bash`, and `#!packages jq` followed by an invalid character as `jq`,
   leaving the rest of the line to the script body. A directive line ending in
   CRLF fails with a message naming CRLF line endings
+- `--nixpkgs-path` fails early, naming the path, if the path does not exist;
+  the error surfaced only in `nix-build`
 
 # Version 1.0.0.0
 

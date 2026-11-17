@@ -65,8 +65,8 @@ keywords = ["flake", "channel", "http", "https", "file", "git", "s3", "ssh"]
 urlSchemes :: [String]
 urlSchemes = filter (`notElem` ["flake", "channel"]) keywords
 
-parseNixPath :: String -> Either String [NixPathEntry]
-parseNixPath = either (Left . show) Right . getDefaultNixpkgsPath
+parseNixPath :: String -> [NixPathEntry]
+parseNixPath = getDefaultNixpkgsPath
 
 -- | Text of entry characters, path-like, sometimes holding @=@ or a keyword.
 genText :: Gen String
@@ -185,22 +185,20 @@ propParsesBack :: Property
 propParsesBack =
   forAllShrink genNixPath shrinkNixPath $ \x ->
     counterexample (show $ render x) $
-      parseNixPath (render x) === Right (map fst (entries x))
+      parseNixPath (render x) === map fst (entries x)
 
 -- | Every character is either a separator or part of an entry, so every value
 -- parses. Its entries are not empty, and hold its entry characters in order.
 propTotal :: Property
 propTotal =
   forAllShrink genInput shrinkString $ \s ->
-    counterexample (show s) $ case parseNixPath s of
-      Left err -> counterexample err False
-      Right es ->
-        let rs = map renderNixPathEntry es
-         in conjoin
-              [ counterexample "empty entry" $ notElem "" rs,
-                counterexample "white space in an entry" $ not (any (any isSpace) rs),
-                filter isEntryChar (concat rs) === filter isEntryChar s
-              ]
+    counterexample (show s) $
+      let rs = map renderNixPathEntry $ parseNixPath s
+       in conjoin
+            [ counterexample "empty entry" $ notElem "" rs,
+              counterexample "white space in an entry" $ not (any (any isSpace) rs),
+              filter isEntryChar (concat rs) === filter isEntryChar s
+            ]
 
 -- | White space ends an entry.
 data Split = Split
@@ -219,7 +217,7 @@ propSpaceSplits :: Property
 propSpaceSplits =
   forAllShrink (Split <$> genInput <*> genSpace <*> genInput) shrinkSplit $ \x ->
     counterexample (show $ joinSplit x) $
-      parseNixPath (joinSplit x) === ((<>) <$> parseNixPath (before x) <*> parseNixPath (after x))
+      parseNixPath (joinSplit x) === parseNixPath (before x) <> parseNixPath (after x)
   where
     genSpace = scale (min 4) (listOf1 (elements spaceChars))
     shrinkSplit x =
@@ -230,7 +228,7 @@ propSpaceSplits =
 propSeparatorsOnly :: Property
 propSeparatorsOnly =
   forAllShrink (scale (min 16) (listOf genSepChar)) shrinkString $ \s ->
-    counterexample (show s) $ parseNixPath s === Right []
+    counterexample (show s) $ parseNixPath s === []
 
 spec :: Spec
 spec =
