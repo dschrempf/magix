@@ -156,3 +156,22 @@ test-suite test-magix
     , unix
 
   build-tool-depends: hspec-discover:hspec-discover
+
+test-suite test-magix-nix
+  import:             common, test
+  main-is:            Spec.hs
+  hs-source-dirs:     test-nix
+  other-modules:      Magix.TemplateSpec
+  ghc-options:        -threaded
+  type:               exitcode-stdio-1.0
+  build-depends:
+    , base       >=4.7 && <5
+    , directory
+    , filepath
+    , hspec
+    , magix
+    , process
+    , temporary
+    , text
+
+  build-tool-depends: hspec-discover:hspec-discover
