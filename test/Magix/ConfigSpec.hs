@@ -23,10 +23,9 @@ import Magix.Env (MagixEnv (..), NixEnv (..))
 import Magix.Hash (getSlotHash)
 import Magix.Options (Options (..), Rebuild (..), Verbosity (..))
 import Magix.Paths (getSlotDir)
-import Magix.Tools (getRandomTempDir)
+import Magix.Tools (withTempDir)
 import System.Directory
-  ( canonicalizePath,
-    copyFile,
+  ( copyFile,
     createDirectory,
     removeFile,
     withCurrentDirectory,
@@ -52,10 +51,8 @@ contents = "#!/usr/bin/env magix\n#!magix bash\n\necho Hello\n"
 ref :: Text
 ref = "github:NixOS/nixpkgs/nixos-unstable"
 
-getFixture :: IO Fixture
-getFixture = do
-  -- Canonical, so that the expected paths match the working directory.
-  tmp <- getRandomTempDir >>= canonicalizePath
+withFixture :: (Fixture -> IO a) -> IO a
+withFixture action = withTempDir $ \tmp -> do
   let dir name = tmp </> name
       fx =
         Fixture
@@ -71,7 +68,7 @@ getFixture = do
   copyFile fx.script fx.copy
   createSymbolicLink fx.script fx.link
   createSymbolicLink fx.script fx.otherLink
-  pure fx
+  action fx
 
 -- | Read neither @NIX_PATH@ nor the XDG cache directory.
 getConfigWith :: Fixture -> Text -> ByteString -> FilePath -> IO Config
@@ -123,64 +120,62 @@ spec :: Spec
 spec = do
   describe "getConfig" $ do
     it "keeps symbolic links in the invoked path and resolves them in the script path" $ do
-      fx <- getFixture
-      c <- getConfigRelative fx
-      c.invokedPath `shouldBe` fx.link
-      c.scriptPath `shouldBe` fx.script
+      withFixture $ \fx -> do
+        c <- getConfigRelative fx
+        c.invokedPath `shouldBe` fx.link
+        c.scriptPath `shouldBe` fx.script
 
     it "names the slot and the script by the invoked path" $ do
-      fx <- getFixture
-      c <- getConfigRelative fx
-      c.scriptName `shouldBe` "run"
-      c.slotDir `shouldBe` getSlotDir fx.cache (getSlotHash fx.link) "run"
+      withFixture $ \fx -> do
+        c <- getConfigRelative fx
+        c.scriptName `shouldBe` "run"
+        c.slotDir `shouldBe` getSlotDir fx.cache (getSlotHash fx.link) "run"
 
     it "separates the slots of a script invoked by different paths" $ do
-      fx <- getFixture
-      c <- getConfigRelative fx
-      c' <- getConfigOf fx fx.otherLink
-      c'.scriptPath `shouldBe` c.scriptPath
-      c'.slotDir `shouldNotBe` c.slotDir
+      withFixture $ \fx -> do
+        c <- getConfigRelative fx
+        c' <- getConfigOf fx fx.otherLink
+        c'.scriptPath `shouldBe` c.scriptPath
+        c'.slotDir `shouldNotBe` c.slotDir
 
     it "keeps the slot and the hash when a deploy moves the script" $ do
-      fx <- getFixture
-      c <- getConfigRelative fx
-      deploy fx
-      c' <- getConfigRelative fx
-      c'.scriptPath `shouldBe` fx.copy
-      c'.slotDir `shouldBe` c.slotDir
-      c'.magixHash `shouldBe` c.magixHash
+      withFixture $ \fx -> do
+        c <- getConfigRelative fx
+        deploy fx
+        c' <- getConfigRelative fx
+        c'.scriptPath `shouldBe` fx.copy
+        c'.slotDir `shouldBe` c.slotDir
+        c'.magixHash `shouldBe` c.magixHash
 
     it "hashes the same contents at another canonical path alike" $ do
-      fx <- getFixture
-      c <- getConfigOf fx fx.script
-      c' <- getConfigOf fx fx.copy
-      c'.magixHash `shouldBe` c.magixHash
+      withFixture $ \fx -> do
+        c <- getConfigOf fx fx.script
+        c' <- getConfigOf fx fx.copy
+        c'.magixHash `shouldBe` c.magixHash
 
     it "hashes other contents differently" $ do
-      fx <- getFixture
-      c <- getConfigRelative fx
-      c' <- withCurrentDirectory fx.linkDir $ getConfigWith fx ref (contents <> "\n") "run"
-      c'.magixHash `shouldNotBe` c.magixHash
+      withFixture $ \fx -> do
+        c <- getConfigRelative fx
+        c' <- withCurrentDirectory fx.linkDir $ getConfigWith fx ref (contents <> "\n") "run"
+        c'.magixHash `shouldNotBe` c.magixHash
 
     it "hashes another build mode differently" $ do
-      fx <- getFixture
-      c <- getConfigRelative fx
-      c' <- withCurrentDirectory fx.linkDir $ getConfigWith fx "nixpkgs" contents "run"
-      c'.magixHash `shouldNotBe` c.magixHash
+      withFixture $ \fx -> do
+        c <- getConfigRelative fx
+        c' <- withCurrentDirectory fx.linkDir $ getConfigWith fx "nixpkgs" contents "run"
+        c'.magixHash `shouldNotBe` c.magixHash
 
   describe "getConfig (NIX_PATH)" $ do
     it "hashes a Nixpkgs path as the target of its symbolic link" $ do
-      fx <- getFixture
-      nixpkgs <- getRandomTempDir >>= canonicalizePath
-      createDirectory (nixpkgs </> "target")
-      createSymbolicLink (nixpkgs </> "target") (nixpkgs </> "link")
-      c <- getChannelConfig fx $ "nixpkgs=" <> (nixpkgs </> "link")
-      c' <- getChannelConfig fx $ "nixpkgs=" <> (nixpkgs </> "target")
-      c.buildMode `shouldBe` ChannelBuild (nixpkgs </> "target")
-      c.magixHash `shouldBe` c'.magixHash
+      withFixture $ \fx -> withTempDir $ \nixpkgs -> do
+        createDirectory (nixpkgs </> "target")
+        createSymbolicLink (nixpkgs </> "target") (nixpkgs </> "link")
+        c <- getChannelConfig fx $ "nixpkgs=" <> (nixpkgs </> "link")
+        c' <- getChannelConfig fx $ "nixpkgs=" <> (nixpkgs </> "target")
+        c.buildMode `shouldBe` ChannelBuild (nixpkgs </> "target")
+        c.magixHash `shouldBe` c'.magixHash
 
     it "skips a Nixpkgs path that does not exist" $ do
-      fx <- getFixture
-      nixpkgs <- getRandomTempDir >>= canonicalizePath
-      c <- getChannelConfig fx $ "nixpkgs=" <> (nixpkgs </> "missing") <> ":nixpkgs=" <> nixpkgs
-      c.buildMode `shouldBe` ChannelBuild nixpkgs
+      withFixture $ \fx -> withTempDir $ \nixpkgs -> do
+        c <- getChannelConfig fx $ "nixpkgs=" <> (nixpkgs </> "missing") <> ":nixpkgs=" <> nixpkgs
+        c.buildMode `shouldBe` ChannelBuild nixpkgs

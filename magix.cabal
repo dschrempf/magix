@@ -153,7 +153,7 @@ test-suite test-magix
     , magix
     , megaparsec
     , QuickCheck
-    , random
+    , temporary
     , text
     , unix
 

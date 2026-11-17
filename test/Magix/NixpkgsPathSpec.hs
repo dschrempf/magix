@@ -23,8 +23,8 @@ import Magix.NixpkgsPath
     pNixPath,
     resolveNixpkgs,
   )
-import Magix.Tools (getRandomTempDir, parseS)
-import System.Directory (canonicalizePath, createDirectory, createDirectoryLink)
+import Magix.Tools (parseS, withTempDir)
+import System.Directory (createDirectory, createDirectoryLink)
 import System.FilePath ((</>))
 import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe, shouldSatisfy)
 
@@ -32,10 +32,6 @@ import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe, shouldSatis
 resolveFlakeTo :: FilePath -> String -> IO (Either String FilePath)
 resolveFlakeTo p "nixpkgs" = pure $ Right p
 resolveFlakeTo _ r = pure $ Left $ "unknown " <> r
-
--- | A fresh temporary directory, canonical so that resolved paths match it.
-getTempDir :: IO FilePath
-getTempDir = getRandomTempDir >>= canonicalizePath
 
 -- | A flake resolver failing the test if called.
 noFlake :: String -> IO (Either String FilePath)
@@ -100,38 +96,38 @@ spec = do
 
   describe "resolveNixpkgs" $ do
     it "resolves a 'nixpkgs=' entry to its path" $ do
-      dir <- getTempDir
-      res <- resolveNixpkgs noFlake (Prefixed "nixpkgs" (TargetPath dir))
-      res `shouldBe` Right (Just dir)
+      withTempDir $ \dir -> do
+        res <- resolveNixpkgs noFlake (Prefixed "nixpkgs" (TargetPath dir))
+        res `shouldBe` Right (Just dir)
 
     it "resolves a 'nixpkgs=' entry whose value contains '='" $ do
-      dir <- getTempDir
-      createDirectory (dir </> "a=b=c")
-      res <- resolveNixpkgs noFlake (Prefixed "nixpkgs" (TargetPath (dir </> "a=b=c")))
-      res `shouldBe` Right (Just (dir </> "a=b=c"))
+      withTempDir $ \dir -> do
+        createDirectory (dir </> "a=b=c")
+        res <- resolveNixpkgs noFlake (Prefixed "nixpkgs" (TargetPath (dir </> "a=b=c")))
+        res `shouldBe` Right (Just (dir </> "a=b=c"))
 
     it "resolves a 'nixpkgs=' entry to the target of its symbolic link" $ do
-      dir <- getTempDir
-      createDirectory (dir </> "target")
-      createDirectoryLink (dir </> "target") (dir </> "link")
-      res <- resolveNixpkgs noFlake (Prefixed "nixpkgs" (TargetPath (dir </> "link")))
-      res `shouldBe` Right (Just (dir </> "target"))
+      withTempDir $ \dir -> do
+        createDirectory (dir </> "target")
+        createDirectoryLink (dir </> "target") (dir </> "link")
+        res <- resolveNixpkgs noFlake (Prefixed "nixpkgs" (TargetPath (dir </> "link")))
+        res `shouldBe` Right (Just (dir </> "target"))
 
     it "skips a 'nixpkgs=' entry whose path does not exist" $ do
-      dir <- getTempDir
-      res <- resolveNixpkgs noFlake (Prefixed "nixpkgs" (TargetPath (dir </> "missing")))
-      res `shouldBe` Right Nothing
-      createDirectoryLink (dir </> "missing") (dir </> "dangling")
-      res' <- resolveNixpkgs noFlake (Prefixed "nixpkgs" (TargetPath (dir </> "dangling")))
-      res' `shouldBe` Right Nothing
+      withTempDir $ \dir -> do
+        res <- resolveNixpkgs noFlake (Prefixed "nixpkgs" (TargetPath (dir </> "missing")))
+        res `shouldBe` Right Nothing
+        createDirectoryLink (dir </> "missing") (dir </> "dangling")
+        res' <- resolveNixpkgs noFlake (Prefixed "nixpkgs" (TargetPath (dir </> "dangling")))
+        res' `shouldBe` Right Nothing
 
     it "ignores other prefixed entries" $ do
-      dir <- getTempDir
-      res <- resolveNixpkgs noFlake (Prefixed "other" (TargetPath dir))
-      res `shouldBe` Right Nothing
-      -- A multi-'=' token like "a=b=c" is a prefixed 'a' entry: skipped, not an error.
-      res' <- resolveNixpkgs noFlake (Prefixed "a" (TargetPath "b=c"))
-      res' `shouldBe` Right Nothing
+      withTempDir $ \dir -> do
+        res <- resolveNixpkgs noFlake (Prefixed "other" (TargetPath dir))
+        res `shouldBe` Right Nothing
+        -- A multi-'=' token like "a=b=c" is a prefixed 'a' entry: skipped, not an error.
+        res' <- resolveNixpkgs noFlake (Prefixed "a" (TargetPath "b=c"))
+        res' `shouldBe` Right Nothing
 
     it "fails on a 'nixpkgs=' entry with a 'channel:' or URL target" $ do
       let e = Prefixed "nixpkgs" (TargetRemote "channel:nixos-unstable")
@@ -144,22 +140,22 @@ spec = do
       res `shouldBe` Left (RemoteEntry e)
 
     it "resolves a 'nixpkgs=' entry with a 'flake:' target to the target of its symbolic link" $ do
-      dir <- getTempDir
-      createDirectory (dir </> "target")
-      createDirectoryLink (dir </> "target") (dir </> "link")
-      res <- resolveNixpkgs (resolveFlakeTo (dir </> "link")) (Prefixed "nixpkgs" (TargetFlake "nixpkgs"))
-      res `shouldBe` Right (Just (dir </> "target"))
+      withTempDir $ \dir -> do
+        createDirectory (dir </> "target")
+        createDirectoryLink (dir </> "target") (dir </> "link")
+        res <- resolveNixpkgs (resolveFlakeTo (dir </> "link")) (Prefixed "nixpkgs" (TargetFlake "nixpkgs"))
+        res `shouldBe` Right (Just (dir </> "target"))
 
     it "fails on a 'nixpkgs=' entry with an unresolved 'flake:' target" $ do
-      dir <- getTempDir
-      let e = Prefixed "nixpkgs" (TargetFlake "other")
-      res <- resolveNixpkgs (resolveFlakeTo dir) e
-      res `shouldBe` Left (FlakeEntry e "unknown other")
+      withTempDir $ \dir -> do
+        let e = Prefixed "nixpkgs" (TargetFlake "other")
+        res <- resolveNixpkgs (resolveFlakeTo dir) e
+        res `shouldBe` Left (FlakeEntry e "unknown other")
 
     it "fails on a 'nixpkgs=' entry with a 'flake:' target resolving to a missing path" $ do
-      dir <- getTempDir
-      res <- resolveNixpkgs (resolveFlakeTo (dir </> "missing")) (Prefixed "nixpkgs" (TargetFlake "nixpkgs"))
-      res `shouldSatisfy` isLeft
+      withTempDir $ \dir -> do
+        res <- resolveNixpkgs (resolveFlakeTo (dir </> "missing")) (Prefixed "nixpkgs" (TargetFlake "nixpkgs"))
+        res `shouldSatisfy` isLeft
 
     it "ignores other prefixed entries with a 'flake:' target, without resolving them" $ do
       res <- resolveNixpkgs noFlake (Prefixed "other" (TargetFlake "nixpkgs"))
@@ -170,23 +166,23 @@ spec = do
       res `shouldBe` Right Nothing
 
     it "resolves an unprefixed directory containing 'nixpkgs' to its target" $ do
-      dir <- getTempDir
-      let target = dir </> "nixpkgs-target"
-          link = dir </> "nixpkgs"
-      createDirectory target
-      createDirectoryLink target link
-      res <- resolveNixpkgs noFlake (Unprefixed (TargetPath dir))
-      res `shouldBe` Right (Just target)
+      withTempDir $ \dir -> do
+        let target = dir </> "nixpkgs-target"
+            link = dir </> "nixpkgs"
+        createDirectory target
+        createDirectoryLink target link
+        res <- resolveNixpkgs noFlake (Unprefixed (TargetPath dir))
+        res `shouldBe` Right (Just target)
 
     it "ignores an unprefixed directory without a 'nixpkgs' entry" $ do
-      dir <- getTempDir
-      res <- resolveNixpkgs noFlake (Unprefixed (TargetPath dir))
-      res `shouldBe` Right Nothing
-      res' <- resolveNixpkgs noFlake (Unprefixed (TargetPath (dir </> "missing")))
-      res' `shouldBe` Right Nothing
+      withTempDir $ \dir -> do
+        res <- resolveNixpkgs noFlake (Unprefixed (TargetPath dir))
+        res `shouldBe` Right Nothing
+        res' <- resolveNixpkgs noFlake (Unprefixed (TargetPath (dir </> "missing")))
+        res' `shouldBe` Right Nothing
 
     it "resolves an unprefixed 'flake:' target containing 'nixpkgs'" $ do
-      dir <- getTempDir
-      createDirectory (dir </> "nixpkgs")
-      res <- resolveNixpkgs (resolveFlakeTo dir) (Unprefixed (TargetFlake "nixpkgs"))
-      res `shouldBe` Right (Just (dir </> "nixpkgs"))
+      withTempDir $ \dir -> do
+        createDirectory (dir </> "nixpkgs")
+        res <- resolveNixpkgs (resolveFlakeTo dir) (Unprefixed (TargetFlake "nixpkgs"))
+        res `shouldBe` Right (Just (dir </> "nixpkgs"))

@@ -16,22 +16,18 @@ where
 
 import Magix.Build (BuildStatus (..), getBuildStatus)
 import Magix.Config (Config (..))
-import Magix.Tools (getRandomFakeConfig)
-import System.Directory (removeFile)
+import Magix.Tools (withFakeConfig)
 import System.Posix (createSymbolicLink)
-import Test.Hspec (Spec, describe, it, shouldBe)
+import Test.Hspec (Spec, describe, it, shouldReturn)
 
 spec :: Spec
 spec = do
   describe "getBuildStatus" $ do
     it "detects non-existing builds" $ do
-      bs <- getRandomFakeConfig >>= getBuildStatus
-      bs `shouldBe` NeedToBuild
+      withFakeConfig $ \c -> getBuildStatus c `shouldReturn` NeedToBuild
 
     it "detects dangling symbolic links to build result" $ do
-      c <- getRandomFakeConfig
-      let rp = c.resultLinkPath
-      createSymbolicLink "nonexistent" rp
-      bs <- getBuildStatus c
-      bs `shouldBe` NeedToBuild
-      removeFile rp
+      withFakeConfig $ \c -> do
+        let rp = c.resultLinkPath
+        createSymbolicLink "nonexistent" rp
+        getBuildStatus c `shouldReturn` NeedToBuild
