@@ -32,7 +32,7 @@ import Magix.FlakeRegistry
     resolveFlakeId,
     resolveFlakeRef,
   )
-import Magix.Tools (getRandomTempDir)
+import Magix.Tools (withTempDir)
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath ((</>))
 import Test.Hspec (Spec, describe, it, shouldBe, shouldSatisfy)
@@ -165,42 +165,42 @@ spec = do
 
   describe "readRegistry" $ do
     it "reads a missing file as an empty registry" $ do
-      dir <- getRandomTempDir
-      res <- readRegistry (dir </> "registry.json")
-      res `shouldBe` Right (Registry (dir </> "registry.json") [])
+      withTempDir $ \dir -> do
+        res <- readRegistry (dir </> "registry.json")
+        res `shouldBe` Right (Registry (dir </> "registry.json") [])
 
     it "fails on a malformed file" $ do
-      dir <- getRandomTempDir
-      writeFile (dir </> "registry.json") "{\"version\":2,"
-      res <- readRegistry (dir </> "registry.json")
-      res `shouldSatisfy` isLeft
+      withTempDir $ \dir -> do
+        writeFile (dir </> "registry.json") "{\"version\":2,"
+        res <- readRegistry (dir </> "registry.json")
+        res `shouldSatisfy` isLeft
 
   describe "resolveFlakeRef" $ do
-    let withRegistries u s = do
-          dir <- getRandomTempDir
-          createDirectoryIfMissing True (dir </> "user")
-          createDirectoryIfMissing True (dir </> "system")
-          writeFile (dir </> "user" </> "registry.json") (registryJson u)
-          writeFile (dir </> "system" </> "registry.json") (registryJson s)
-          pure (dir, noEnv {nixConfigHome = Just (dir </> "user"), nixConfDir = Just (dir </> "system")})
+    let withRegistries u s action =
+          withTempDir $ \dir -> do
+            createDirectoryIfMissing True (dir </> "user")
+            createDirectoryIfMissing True (dir </> "system")
+            writeFile (dir </> "user" </> "registry.json") (registryJson u)
+            writeFile (dir </> "system" </> "registry.json") (registryJson s)
+            action dir noEnv {nixConfigHome = Just (dir </> "user"), nixConfDir = Just (dir </> "system")}
 
     it "resolves through the registry files, the user one first" $ do
-      (_, env) <- withRegistries [("nixpkgs", Left "b")] [("b", Right "/nix/store/s"), ("nixpkgs", Right "/nix/store/x")]
-      res <- resolveFlakeRef env "nixpkgs"
-      res `shouldBe` Right "/nix/store/s"
+      withRegistries [("nixpkgs", Left "b")] [("b", Right "/nix/store/s"), ("nixpkgs", Right "/nix/store/x")] $ \_ env -> do
+        res <- resolveFlakeRef env "nixpkgs"
+        res `shouldBe` Right "/nix/store/s"
 
     it "fails on an absent id, naming the registry files" $ do
-      (_, env) <- withRegistries [] [("other", Right "/nix/store/o")]
-      res <- resolveFlakeRef env "nixpkgs"
-      res `shouldSatisfy` either (\e -> all (`isInfixOf` e) ["'nixpkgs'", "user/registry.json", "system/registry.json"]) (const False)
+      withRegistries [] [("other", Right "/nix/store/o")] $ \_ env -> do
+        res <- resolveFlakeRef env "nixpkgs"
+        res `shouldSatisfy` either (\e -> all (`isInfixOf` e) ["'nixpkgs'", "user/registry.json", "system/registry.json"]) (const False)
 
     it "fails on a reference other than an id" $ do
-      (_, env) <- withRegistries [] [("nixpkgs", Right "/nix/store/n")]
-      res <- resolveFlakeRef env "github:NixOS/nixpkgs"
-      res `shouldSatisfy` isLeft
+      withRegistries [] [("nixpkgs", Right "/nix/store/n")] $ \_ env -> do
+        res <- resolveFlakeRef env "github:NixOS/nixpkgs"
+        res `shouldSatisfy` isLeft
 
     it "fails on a malformed registry" $ do
-      (dir, env) <- withRegistries [] [("nixpkgs", Right "/nix/store/n")]
-      writeFile (dir </> "user" </> "registry.json") "{"
-      res <- resolveFlakeRef env "nixpkgs"
-      res `shouldSatisfy` isLeft
+      withRegistries [] [("nixpkgs", Right "/nix/store/n")] $ \dir env -> do
+        writeFile (dir </> "user" </> "registry.json") "{"
+        res <- resolveFlakeRef env "nixpkgs"
+        res `shouldSatisfy` isLeft
