@@ -44,9 +44,10 @@ network: CI runs it, `cabal test` does not.
 
 - **The build tests stub `nix-build` and `nix` on `PATH`.** No change to
   production code, and the test exercises the real process call.
-- **Tests that need the `nix` binary (6) form a second test suite, which
-  `scripts/check` runs.** The package's own `nix build` runs `cabal test` in
-  the sandbox, where they can't run.
+- **Tests that need the `nix` binary (6) form a second test suite,
+  `test-magix-nix`.** Plain `cabal test` runs both suites, no flag; the
+  sandboxed `nix build`, which has no `nix`, runs `test-magix` alone
+  (`testTargets`).
 - **`scripts/check` stays the end-to-end tier against real Nix.** (2) moves
   its cache logic into unit tests; nothing is ported to Haskell.
 - **`check` prints the per-module coverage report, with no threshold.** It
@@ -57,14 +58,10 @@ network: CI runs it, `cabal test` does not.
   `getRandomTempDir`,** which never removes its directories.
 - **QuickCheck for (7).**
 
-When the second suite and the coverage report land, add them to `Tests` in
-`CLAUDE.md`.
+When the coverage report lands, add it to `Tests` in `CLAUDE.md`.
 
-## Order with other work
+## Status
 
-`flake-nix-path-entry-resolves-to-a-store-path` is in progress on its own
-branch. It touches `NixpkgsPath`, `Config`, `Build`, `Options` and `Env`.
-Start (2)–(5) after it merges, together with the `temporary` switch and the
-coverage report, which touch `test/Magix/Tools.hs` and `scripts/check` as
-that branch does. (1), (6) and (7) don't overlap with it: they started on
-2026-11-17 on branch `test/hashes-templates-properties`.
+`flake-nix-path-entry-resolves-to-a-store-path` merged on 2026-11-17, so
+(2)–(5), the `temporary` switch and the coverage report can start. (1), (6)
+and (7) are on branch `test/hashes-templates-properties`.
