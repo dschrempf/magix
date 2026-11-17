@@ -15,11 +15,13 @@ module Magix.Build
     build,
     withBuildLock,
     resolveResult,
+    nixBuildEnvironment,
   )
 where
 
 import Control.Exception (finally)
 import Control.Monad (unless)
+import Data.List (isPrefixOf)
 import Data.Text (Text)
 import Data.Text.IO (writeFile)
 import Magix.BuildMode (BuildMode (..))
@@ -35,11 +37,12 @@ import System.Directory
     removePathForcibly,
     renameDirectory,
   )
+import System.Environment (getEnvironment)
 import System.Exit (ExitCode (..), exitFailure)
 import System.FileLock (SharedExclusive (..), withFileLock)
 import System.FilePath ((</>))
 import System.Log.Logger (Logger, Priority (..), logL)
-import System.Process (readProcessWithExitCode)
+import System.Process (CreateProcess (..), proc, readCreateProcessWithExitCode, readProcessWithExitCode)
 import Prelude hiding (writeFile)
 
 data BuildStatus = HasBeenBuilt | NeedToBuild deriving (Eq, Show)
@@ -71,16 +74,21 @@ build logger cfg expr = do
     (exitCode, stdOut, stdErr) <- case cfg.buildMode of
       ChannelBuild nixpkgsPath -> do
         logD "Building with 'nix-build'"
+        nixBuildEnv <- nixBuildEnvironment <$> getEnvironment
         -- The templates import <nixpkgs>; '-I' makes it the hashed Nixpkgs, which
         -- `NIX_PATH` may name differently or not at all.
-        readProcessWithExitCode
-          "nix-build"
-          [ "-I",
-            "nixpkgs=" <> nixpkgsPath,
-            "--out-link",
-            cfg.resultLinkPath,
-            pendingDir
-          ]
+        readCreateProcessWithExitCode
+          ( proc
+              "nix-build"
+              [ "-I",
+                "nixpkgs=" <> nixpkgsPath,
+                "--out-link",
+                cfg.resultLinkPath,
+                pendingDir
+              ]
+          )
+            { env = Just nixBuildEnv
+            }
           ""
       FlakeBuild ref -> do
         logD "Writing universal Flake wrapper"
@@ -110,6 +118,12 @@ build logger cfg expr = do
     removePathForcibly cfg.buildDir
     renameDirectory pendingDir cfg.buildDir
   removeSuperseded logger cfg
+
+-- | The environment of @nix-build@ without the variables Nixpkgs reads while it
+-- evaluates, such as @NIXPKGS_ALLOW_UNFREE@: the cache hash misses them. A
+-- flake build evaluates purely and reads none.
+nixBuildEnvironment :: [(String, String)] -> [(String, String)]
+nixBuildEnvironment = filter (not . isPrefixOf "NIXPKGS_" . fst)
 
 -- | Run the action holding the lock of the slot, and the cache lock shared:
 -- builds of different slots run in parallel, and cleaning the cache waits for
