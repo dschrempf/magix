@@ -19,21 +19,23 @@ where
 import Control.Exception (throwIO)
 import Control.Monad (forM_, unless)
 import Data.Char (isSpace)
-import Data.List (dropWhileEnd)
+import Data.List (dropWhileEnd, isInfixOf)
 import Data.Text (pack, unpack)
 import Data.Text.IO qualified as T
+import Magix.Build (nixBuildEnvironment)
 import Magix.BuildMode (BuildMode (..))
 import Magix.Config (Config (..))
 import Magix.Directives (Directives (..), getDirectives)
 import Magix.Expression (getFlakeWrapper, getNixExpression)
 import Magix.Language.Directives (getLanguage)
-import Magix.Language.Language (Language, getLanguageNameLowercase)
-import System.Directory (copyFile)
+import Magix.Language.Language (Language (..), getLanguageNameLowercase)
+import System.Directory (copyFile, createDirectoryIfMissing)
+import System.Environment (getEnvironment)
 import System.Exit (ExitCode (..))
 import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
-import System.Process (readProcessWithExitCode)
-import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, shouldBe)
+import System.Process (CreateProcess (..), proc, readCreateProcessWithExitCode, readProcessWithExitCode)
+import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, shouldBe, shouldSatisfy)
 
 -- | Run a command; fail with its standard error unless it succeeds.
 succeeds :: FilePath -> [String] -> IO String
@@ -81,9 +83,11 @@ getConfigIn dir mode =
 -- | Write the build directory of the language's minimal test script, as
 -- `Magix.Build.build` does, and run the action on it.
 withBuildDir :: Language -> BuildMode -> (FilePath -> IO a) -> IO a
-withBuildDir language mode action =
+withBuildDir language = withScriptBuildDir language (getMinimalScript language)
+
+withScriptBuildDir :: Language -> FilePath -> BuildMode -> (FilePath -> IO a) -> IO a
+withScriptBuildDir language script mode action =
   withSystemTempDirectory "magix-template" $ \dir -> do
-    let script = getMinimalScript language
     directives <- T.readFile script >>= either throwIO pure . getDirectives script
     getLanguage directives.language `shouldBe` language
     copyFile script (dir </> "script")
@@ -100,6 +104,27 @@ withChannelBuildDir language action = do
   nixpkgs <- getNixpkgs
   withBuildDir language (ChannelBuild nixpkgs) (`action` nixpkgs)
 
+-- | Instantiate the build directory against the Nixpkgs path, in the
+-- environment `Magix.Build.build` gives @nix-build@ when magix runs with the
+-- given variables set.
+instantiate :: [(String, String)] -> FilePath -> FilePath -> IO (ExitCode, String, String)
+instantiate vars dir nixpkgs = do
+  magixEnv <- withVars <$> getEnvironment
+  readCreateProcessWithExitCode
+    (proc "nix-instantiate" ["-I", "nixpkgs=" <> nixpkgs, dir]) {env = Just $ nixBuildEnvironment magixEnv}
+    ""
+  where
+    withVars e = filter ((`notElem` map fst vars) . fst) e <> vars
+
+-- | Instantiate under a home whose Nixpkgs overlay fails when applied.
+instantiateWithHomeOverlay :: FilePath -> FilePath -> IO (ExitCode, String, String)
+instantiateWithHomeOverlay dir nixpkgs =
+  withSystemTempDirectory "magix-home" $ \home -> do
+    let nixpkgsConfigDir = home </> ".config" </> "nixpkgs"
+    createDirectoryIfMissing True nixpkgsConfigDir
+    writeFile (nixpkgsConfigDir </> "overlays.nix") "_: _: throw \"overlay applied\"\n"
+    instantiate [("HOME", home)] dir nixpkgs
+
 -- | The flake pins the Nixpkgs from @NIX_PATH@, so that it evaluates offline.
 withFlakeBuildDir :: Language -> (FilePath -> IO a) -> IO a
 withFlakeBuildDir language action = do
@@ -107,7 +132,19 @@ withFlakeBuildDir language action = do
   withBuildDir language (FlakeBuild $ pack $ "path:" <> nixpkgs) action
 
 spec :: Spec
-spec =
+spec = do
+  -- The cache hash misses the variables of the environment.
+  describe "nix-build" $
+    it "ignores NIXPKGS_ALLOW_UNFREE" $
+      withSystemTempDirectory "magix-script" $ \scriptDir -> do
+        let script = scriptDir </> "unfree"
+        writeFile script "#!/usr/bin/env magix\n#!magix bash\n#!packages unrar\n\nunrar\n"
+        nixpkgs <- getNixpkgs
+        withScriptBuildDir Bash script (ChannelBuild nixpkgs) $ \dir -> do
+          (code, _, err) <- instantiate [("NIXPKGS_ALLOW_UNFREE", "1")] dir nixpkgs
+          code `shouldSatisfy` (/= ExitSuccess)
+          err `shouldSatisfy` isInfixOf "unfree"
+
   forM_ [minBound .. maxBound :: Language] $ \language ->
     describe (show language) $ do
       describe "channel build" $ do
@@ -119,6 +156,12 @@ spec =
         it "default.nix instantiates against the hashed Nixpkgs" $
           withChannelBuildDir language $ \dir nixpkgs ->
             succeeds_ "nix-instantiate" ["-I", "nixpkgs=" <> nixpkgs, dir]
+
+        -- The cache hash misses the overlays of the environment.
+        it "default.nix ignores an overlay of the home" $
+          withChannelBuildDir language $ \dir nixpkgs -> do
+            (code, _, err) <- instantiateWithHomeOverlay dir nixpkgs
+            unless (code == ExitSuccess) $ expectationFailure err
 
       describe "flake build" $ do
         it "flake.nix parses" $

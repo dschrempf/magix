@@ -1,5 +1,9 @@
 {
-  pkgs ? import <nixpkgs> { },
+  # Overlays and config from the environment would escape the cache hash.
+  pkgs ? import <nixpkgs> {
+    overlays = [ ];
+    config = { };
+  },
 }:
 
 let

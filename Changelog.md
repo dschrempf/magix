@@ -1,5 +1,9 @@
 # Unreleased
 
+- A channel build reads no Nixpkgs overlays or config from the environment
+  (`<nixpkgs-overlays>`, `~/.config/nixpkgs`, `NIXPKGS_CONFIG`) and no
+  `NIXPKGS_*` variable such as `NIXPKGS_ALLOW_UNFREE`. The cache hash missed
+  them, so a cached script kept the build of the first call after they changed
 - Without `-v`, a run of a built script logs nothing but errors, and a build
   logs one line naming the script; `clean-magix-cache` logs only a wait for
   running builds. A script standing in for a program printed two lines on
