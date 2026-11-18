@@ -15,7 +15,6 @@ module Magix.Language.Common.Directives
     pDirectiveWithValue,
     pDirectiveWithValues,
     pLineEnd,
-    pManyDirectives,
   )
 where
 
@@ -61,7 +60,3 @@ pLineEnd = hspace *> (void newline <|> eof <|> pCarriageReturn)
     pCarriageReturn =
       hidden (lookAhead (char '\r'))
         *> fail "a carriage return ends the directive line; magix needs LF, not CRLF, line endings"
-
--- | Directive lines, each ending with 'pLineEnd'.
-pManyDirectives :: (Monoid b) => Parser b -> Parser b
-pManyDirectives p = mconcat <$> many (p <* pLineEnd)

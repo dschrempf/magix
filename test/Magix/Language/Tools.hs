@@ -13,11 +13,14 @@ module Magix.Language.Tools
   ( getEmptyLanguageDirectives,
     getMinimalTestcase,
     getMinimalDirectiveInput,
+    pManyDirectives,
   )
 where
 
+import Control.Applicative (many)
 import Data.Text (Text)
 import Magix.Language.Bash.Directives (BashDirectives (..))
+import Magix.Language.Common.Directives (Parser, pLineEnd)
 import Magix.Language.Directives (LanguageDirectives (..))
 import Magix.Language.Haskell.Directives (HaskellDirectives (..))
 import Magix.Language.Language (Language (..))
@@ -56,3 +59,7 @@ getMinimalDirectiveInput Python =
   ( "#!magix python\n#!pythonPackages requests",
     PythonD (PythonDirectives ["requests"])
   )
+
+-- | Directive lines, each ending with 'pLineEnd'.
+pManyDirectives :: (Monoid b) => Parser b -> Parser b
+pManyDirectives p = mconcat <$> many (p <* pLineEnd)

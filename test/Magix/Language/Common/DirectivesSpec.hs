@@ -17,8 +17,8 @@ where
 import Magix.Language.Common.Directives
   ( pDirectiveWithValue,
     pDirectiveWithValues,
-    pManyDirectives,
   )
+import Magix.Language.Tools (pManyDirectives)
 import Magix.Tools (parseF, parseS)
 import Test.Hspec (Spec, describe, it)
 import Text.Megaparsec (MonadParsec (eof), chunk)

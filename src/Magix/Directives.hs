@@ -14,29 +14,34 @@ module Magix.Directives
     pShebang,
     pMagixDirective,
     pNixpkgsDirective,
-    pLanguageDirectives,
+    pDirectiveLines,
     pDirectives,
     DirectivesParseError,
     getDirectives,
   )
 where
 
+import Control.Applicative ((<|>))
 import Control.Exception (Exception)
+import Control.Monad (void)
 import Data.Bifunctor (Bifunctor (..))
+import Data.Maybe (isJust)
 import Data.Text (Text)
 import Magix.Language.Common.Directives (Parser, pDirectiveWithValue, pLineEnd, pValue)
-import Magix.Language.Directives (LanguageDirectives, getDirectivesParser)
+import Magix.Language.Directives (DirectiveParser (..), LanguageDirectives, getDirectiveParser)
 import Magix.Language.Language (Language (..), getLanguageNameLowercase)
 import Text.Megaparsec
-  ( MonadParsec (notFollowedBy),
+  ( MonadParsec (eof, lookAhead, notFollowedBy, takeWhileP, try),
     choice,
     chunk,
     errorBundlePretty,
+    getOffset,
     optional,
     parse,
-    try,
+    setOffset,
+    skipMany,
   )
-import Text.Megaparsec.Char (hspace, space, string)
+import Text.Megaparsec.Char (hspace, newline, space, string)
 import Prelude hiding (readFile)
 
 pShebang :: Parser Text
@@ -59,25 +64,64 @@ data Directives = Directives
   }
   deriving (Eq, Show)
 
-pLanguageDirectives :: Parser LanguageDirectives
-pLanguageDirectives = do
-  language <- pMagixDirective
-  pLineEnd
-  directives <- getDirectivesParser language
-  notFollowedBy $ space *> chunk "#!"
-  pure directives
+-- | One line of the directives after the shebang.
+data DirectiveLine d = MagixLine !Language | NixpkgsLine !Text | LanguageLine !d
+
+-- | The directive lines parsed so far.
+data DirectiveLines d = DirectiveLines
+  { magix :: !(Maybe Language),
+    nixpkgs :: !(Maybe Text),
+    directives :: !d
+  }
+
+-- | The language of the first Magix directive among the directive lines,
+-- consuming nothing.
+pLookAheadLanguage :: Parser Language
+pLookAheadLanguage = lookAhead $ do
+  skipMany $ notFollowedBy (chunk "#!magix") *> chunk "#!" *> takeWhileP Nothing (/= '\n') *> (void newline <|> eof)
+  pMagixDirective <|> fail "no #!magix directive names the language of the script"
+
+-- | The directive lines after the shebang, in any order: one Magix directive,
+-- at most one Nixpkgs directive, and the directives of the language the Magix
+-- directive names. No other directive line follows them.
+pDirectiveLines :: Parser Directives
+pDirectiveLines = do
+  language <- pLookAheadLanguage
+  case getDirectiveParser language of
+    DirectiveParser pLanguageLine toLanguageDirectives -> do
+      let pLine =
+            choice
+              [ MagixLine <$> try pMagixDirective,
+                NixpkgsLine <$> try pNixpkgsDirective,
+                LanguageLine <$> try pLanguageLine
+              ]
+          go ls = do
+            start <- getOffset
+            next <- optional $ lookAhead (chunk "#!")
+            case next of
+              Nothing -> pure ls
+              Just _ -> do
+                line <- pLine <* pLineEnd
+                go =<< case line of
+                  MagixLine l
+                    | isJust ls.magix -> failAt start "a second #!magix directive; a script has one"
+                    | otherwise -> pure ls {magix = Just l}
+                  NixpkgsLine r
+                    | isJust ls.nixpkgs -> failAt start "a second #!nixpkgs directive; a script has at most one"
+                    | otherwise -> pure ls {nixpkgs = Just r}
+                  LanguageLine d -> pure ls {directives = ls.directives <> d}
+      ls <- go $ DirectiveLines Nothing Nothing mempty
+      notFollowedBy $ space *> chunk "#!"
+      pure $
+        Directives
+          { nixpkgsRef = ls.nixpkgs,
+            language = toLanguageDirectives ls.directives
+          }
+  where
+    failAt offset msg = setOffset offset *> fail msg
 
 pDirectives :: Parser Directives
-pDirectives = do
-  _ <- pShebang
-  pLineEnd
-  nixpkgsRef <- optional (try pNixpkgsDirective <* pLineEnd)
-  langDirs <- pLanguageDirectives
-  pure $
-    Directives
-      { nixpkgsRef = nixpkgsRef,
-        language = langDirs
-      }
+pDirectives = pShebang *> pLineEnd *> pDirectiveLines
 
 data DirectivesParseError = DirectivesParseError
   { _directives :: !Text,

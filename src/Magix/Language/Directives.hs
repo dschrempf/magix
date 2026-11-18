@@ -13,16 +13,17 @@
 -- Bijective map between `Language` and `LanguageDirectives`.
 module Magix.Language.Directives
   ( LanguageDirectives (..),
-    getDirectivesParser,
+    DirectiveParser (..),
+    getDirectiveParser,
     getLanguage,
   )
 where
 
-import Magix.Language.Bash.Directives (BashDirectives, pBashDirectives)
+import Magix.Language.Bash.Directives (BashDirectives, pBashDirective)
 import Magix.Language.Common.Directives (Parser)
-import Magix.Language.Haskell.Directives (HaskellDirectives, pHaskellDirectives)
+import Magix.Language.Haskell.Directives (HaskellDirectives, pHaskellDirective)
 import Magix.Language.Language (Language (..))
-import Magix.Language.Python.Directives (PythonDirectives, pPythonDirectives)
+import Magix.Language.Python.Directives (PythonDirectives, pPythonDirective)
 
 data LanguageDirectives
   = BashD !BashDirectives
@@ -30,11 +31,20 @@ data LanguageDirectives
   | PythonD !PythonDirectives
   deriving (Eq, Show)
 
-getDirectivesParser :: Language -> Parser LanguageDirectives
-getDirectivesParser l = case l of
-  Bash -> BashD <$> pBashDirectives
-  Haskell -> HaskellD <$> pHaskellDirectives
-  Python -> PythonD <$> pPythonDirectives
+data DirectiveParser
+  = forall d.
+    (Monoid d) =>
+    DirectiveParser
+      -- | One directive line of a language.
+      !(Parser d)
+      -- | The language directives of all lines combined.
+      !(d -> LanguageDirectives)
+
+getDirectiveParser :: Language -> DirectiveParser
+getDirectiveParser l = case l of
+  Bash -> DirectiveParser pBashDirective BashD
+  Haskell -> DirectiveParser pHaskellDirective HaskellD
+  Python -> DirectiveParser pPythonDirective PythonD
 
 getLanguage :: LanguageDirectives -> Language
 getLanguage (BashD _) = Bash

@@ -15,7 +15,9 @@ module Magix.Language.Haskell.DirectivesSpec
 where
 
 import Data.Text (Text, unlines)
-import Magix.Language.Haskell.Directives (HaskellDirectives (..), pHaskellDirectives)
+import Magix.Language.Common.Directives (Parser)
+import Magix.Language.Haskell.Directives (HaskellDirectives (..), pHaskellDirective)
+import Magix.Language.Tools (pManyDirectives)
 import Magix.Tools (parseS)
 import Test.Hspec (Spec, describe, it)
 import Prelude hiding (unlines)
@@ -40,6 +42,9 @@ multiple =
       "#!ghcFlags 2",
       "#!ghcFlags 3 4"
     ]
+
+pHaskellDirectives :: Parser HaskellDirectives
+pHaskellDirectives = pManyDirectives pHaskellDirective
 
 spec :: Spec
 spec = do

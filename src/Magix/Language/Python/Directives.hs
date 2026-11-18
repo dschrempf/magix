@@ -11,7 +11,7 @@
 -- Creation date: Fri Oct 18 09:17:40 2024.
 module Magix.Language.Python.Directives
   ( PythonDirectives (..),
-    pPythonDirectives,
+    pPythonDirective,
   )
 where
 
@@ -19,14 +19,12 @@ import Data.Text (Text)
 import Magix.Language.Common.Directives
   ( Parser,
     pDirectiveWithValues,
-    pManyDirectives,
   )
 import Prelude hiding (readFile)
 
 newtype PythonDirectives = PythonDirectives {_pythonPackages :: [Text]}
   deriving (Eq, Show, Semigroup, Monoid)
 
-pPythonDirectives :: Parser PythonDirectives
-pPythonDirectives =
-  pManyDirectives $
-    PythonDirectives <$> pDirectiveWithValues "pythonPackages"
+-- | One Python directive line, without its end.
+pPythonDirective :: Parser PythonDirectives
+pPythonDirective = PythonDirectives <$> pDirectiveWithValues "pythonPackages"
