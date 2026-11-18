@@ -15,8 +15,9 @@ module Magix.Language.Python.DirectivesSpec
 where
 
 import Data.Text (Text, unlines)
-import Magix.Language.Common.Directives (Parser, pManyDirectives)
+import Magix.Language.Common.Directives (Parser)
 import Magix.Language.Python.Directives (PythonDirectives (..), pPythonDirective)
+import Magix.Language.Tools (pManyDirectives)
 import Magix.Tools (parseS)
 import Test.Hspec (Spec, describe, it)
 import Prelude hiding (unlines)

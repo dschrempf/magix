@@ -15,8 +15,9 @@ module Magix.Language.Bash.DirectivesSpec
 where
 
 import Data.Text (Text, unlines)
-import Magix.Language.Common.Directives (Parser, pManyDirectives)
+import Magix.Language.Common.Directives (Parser)
 import Magix.Language.Bash.Directives (BashDirectives (..), pBashDirective)
+import Magix.Language.Tools (pManyDirectives)
 import Magix.Tools (parseF, parseFContaining, parseS)
 import Test.Hspec (Spec, describe, it)
 import Prelude hiding (unlines)
