@@ -17,11 +17,13 @@ where
 import Data.ByteString.Char8 qualified as BS
 import Data.Either (isLeft)
 import Data.List (intercalate, isInfixOf)
+import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Magix.Env (NixEnv (..))
 import Magix.FlakeRegistry
   ( FlakeError (..),
     FlakeRef (..),
+    PathFlake (..),
     Registry (..),
     RegistryEntry (..),
     RegistryFiles (..),
@@ -29,6 +31,7 @@ import Magix.FlakeRegistry
     parseFlakeId,
     parseRegistry,
     readRegistry,
+    renderPathFlake,
     resolveFlakeId,
     resolveFlakeRef,
   )
@@ -58,6 +61,13 @@ registryJson xs =
     indirect j = "{\"type\":\"indirect\",\"id\":\"" <> j <> "\"}"
     path p = "{\"type\":\"path\",\"path\":\"" <> p <> "\",\"narHash\":\"sha256-x\"}"
 
+pathRef :: FilePath -> FlakeRef
+pathRef p = PathRef $ PathFlake p Map.empty
+
+-- | Resolve an id to the path of its registry entry.
+resolveId :: [Registry] -> Text -> Either FlakeError FilePath
+resolveId rs = fmap (.path) . resolveFlakeId rs
+
 noEnv :: NixEnv (Maybe String)
 noEnv = NixEnv Nothing Nothing Nothing Nothing
 
@@ -67,14 +77,16 @@ spec = do
     it "parses path, indirect and other targets" $ do
       let json =
             "{\"version\":2,\"flakes\":["
-              <> "{\"from\":{\"type\":\"indirect\",\"id\":\"a\"},\"to\":{\"type\":\"path\",\"path\":\"/nix/store/a\",\"rev\":\"r\"}},"
+              <> "{\"from\":{\"type\":\"indirect\",\"id\":\"a\"},\"to\":{\"type\":\"path\",\"path\":\"/nix/store/a\",\"rev\":\"r\",\"lastModified\":17}},"
+              <> "{\"from\":{\"type\":\"indirect\",\"id\":\"e\"},\"to\":{\"type\":\"path\",\"path\":\"/e\",\"x\":true}},"
               <> "{\"from\":{\"type\":\"indirect\",\"id\":\"b\"},\"to\":{\"type\":\"indirect\",\"id\":\"a\"}},"
               <> "{\"from\":{\"type\":\"indirect\",\"id\":\"c\"},\"to\":{\"type\":\"github\",\"owner\":\"o\",\"repo\":\"r\"}},"
               <> "{\"from\":{\"type\":\"indirect\",\"id\":\"d\",\"ref\":\"main\"},\"to\":{\"type\":\"path\",\"path\":\"relative\"}}"
               <> "]}"
       fmap (.entries) (parseRegistry userFile (BS.pack json))
         `shouldBe` Right
-          [ entry "a" (PathRef "/nix/store/a"),
+          [ entry "a" (PathRef $ PathFlake "/nix/store/a" $ Map.fromList [("lastModified", "17"), ("rev", "r")]),
+            entry "e" (OtherRef "{\"path\":\"/e\",\"type\":\"path\",\"x\":true}"),
             entry "b" (IndirectRef "a"),
             entry "c" (OtherRef "{\"owner\":\"o\",\"repo\":\"r\",\"type\":\"github\"}"),
             RegistryEntry
@@ -87,6 +99,21 @@ spec = do
 
     it "fails on malformed JSON" $ do
       parseRegistry userFile "{\"version\":2," `shouldSatisfy` isLeft
+
+  describe "renderPathFlake" $ do
+    it "renders the attributes as the query, sorted, percent-encoded like Nix" $ do
+      -- From 'nix flake metadata nixpkgs' (Nix 2.35).
+      let attrs =
+            Map.fromList
+              [ ("rev", "d5cc6833999746cffdfe0598f7bc801a57b887a9"),
+                ("narHash", "sha256-Wpz/7x/YWnDIBu7yj6ixe8j6fIMsidd9Y+o1PqPF3iM="),
+                ("lastModified", "1794537146")
+              ]
+      renderPathFlake (PathFlake "/nix/store/zakqk45ps6q9s4fjnjqkvp8hdnhkgd5f-source" attrs)
+        `shouldBe` "path:/nix/store/zakqk45ps6q9s4fjnjqkvp8hdnhkgd5f-source?lastModified=1794537146&narHash=sha256-Wpz/7x/YWnDIBu7yj6ixe8j6fIMsidd9Y%2Bo1PqPF3iM%3D&rev=d5cc6833999746cffdfe0598f7bc801a57b887a9"
+
+    it "renders a path without attributes without a query" $ do
+      renderPathFlake (PathFlake "/nix/store/a b" Map.empty) `shouldBe` "path:/nix/store/a%20b"
 
   describe "parseFlakeId" $ do
     it "accepts a bare id" $ do
@@ -105,47 +132,47 @@ spec = do
     let user = Registry userFile
         system = Registry systemFile
     it "resolves a path target" $ do
-      resolveFlakeId [user [entry "nixpkgs" (PathRef "/nix/store/n")]] "nixpkgs"
+      resolveId [user [entry "nixpkgs" (pathRef "/nix/store/n")]] "nixpkgs"
         `shouldBe` Right "/nix/store/n"
 
     it "searches the user registry before the system registry" $ do
-      resolveFlakeId
-        [ user [entry "nixpkgs" (PathRef "/nix/store/u")],
-          system [entry "nixpkgs" (PathRef "/nix/store/s")]
+      resolveId
+        [ user [entry "nixpkgs" (pathRef "/nix/store/u")],
+          system [entry "nixpkgs" (pathRef "/nix/store/s")]
         ]
         "nixpkgs"
         `shouldBe` Right "/nix/store/u"
 
     it "falls back to the system registry" $ do
-      resolveFlakeId
-        [user [entry "other" (PathRef "/nix/store/o")], system [entry "nixpkgs" (PathRef "/nix/store/s")]]
+      resolveId
+        [user [entry "other" (pathRef "/nix/store/o")], system [entry "nixpkgs" (pathRef "/nix/store/s")]]
         "nixpkgs"
         `shouldBe` Right "/nix/store/s"
 
     it "follows indirect targets, searching from the first registry" $ do
-      resolveFlakeId
-        [ user [entry "b" (PathRef "/nix/store/u")],
-          system [entry "a" (IndirectRef "b"), entry "b" (PathRef "/nix/store/s")]
+      resolveId
+        [ user [entry "b" (pathRef "/nix/store/u")],
+          system [entry "a" (IndirectRef "b"), entry "b" (pathRef "/nix/store/s")]
         ]
         "a"
         `shouldBe` Right "/nix/store/u"
 
     it "fails on a cycle" $ do
-      resolveFlakeId [user [entry "a" (IndirectRef "b"), entry "b" (IndirectRef "a")]] "a"
+      resolveId [user [entry "a" (IndirectRef "b"), entry "b" (IndirectRef "a")]] "a"
         `shouldBe` Left (Cycle ["a", "b", "a"])
-      resolveFlakeId [user [entry "a" (IndirectRef "a")]] "a"
+      resolveId [user [entry "a" (IndirectRef "a")]] "a"
         `shouldBe` Left (Cycle ["a", "a"])
 
     it "fails on a target other than a path" $ do
-      resolveFlakeId [user [], system [entry "nixpkgs" (OtherRef "{}")]] "nixpkgs"
+      resolveId [user [], system [entry "nixpkgs" (OtherRef "{}")]] "nixpkgs"
         `shouldBe` Left (NotAPath "nixpkgs" systemFile "{}")
 
     it "fails on an absent id" $ do
-      resolveFlakeId [user [], system [entry "other" (PathRef "/nix/store/o")]] "nixpkgs"
+      resolveId [user [], system [entry "other" (pathRef "/nix/store/o")]] "nixpkgs"
         `shouldBe` Left (NotInRegistries "nixpkgs")
 
     it "ignores an entry whose source has a ref" $ do
-      resolveFlakeId [user [RegistryEntry (OtherRef "{}") (PathRef "/nix/store/o")]] "nixpkgs"
+      resolveId [user [RegistryEntry (OtherRef "{}") (pathRef "/nix/store/o")]] "nixpkgs"
         `shouldBe` Left (NotInRegistries "nixpkgs")
 
   describe "getRegistryFiles" $ do

@@ -77,6 +77,7 @@ library
     Magix.Language.Language
     Magix.Language.Python.Directives
     Magix.Language.Python.Expression
+    Magix.LockedFlake
     Magix.Main
     Magix.NixpkgsPath
     Magix.Options
@@ -90,6 +91,7 @@ library
     , aeson
     , base                  >=4.7 && <5
     , bytestring
+    , containers
     , cryptohash-sha256
     , directory
     , filelock
@@ -136,6 +138,7 @@ test-suite test-magix
     Magix.Language.Python.DirectivesSpec
     Magix.Language.Python.ExpressionSpec
     Magix.Language.Tools
+    Magix.LockedFlakeSpec
     Magix.MainSpec
     Magix.NixpkgsPathPropertiesSpec
     Magix.NixpkgsPathSpec
@@ -149,6 +152,7 @@ test-suite test-magix
   build-depends:
     , base                  >=4.7 && <5
     , bytestring
+    , containers
     , directory
     , filepath
     , hslogger
@@ -167,7 +171,10 @@ test-suite test-magix-nix
   import:             common, test
   main-is:            Spec.hs
   hs-source-dirs:     test-nix
-  other-modules:      Magix.TemplateSpec
+  other-modules:
+    Magix.LockedFlakeSpec
+    Magix.TemplateSpec
+
   ghc-options:        -threaded
   type:               exitcode-stdio-1.0
   build-depends:

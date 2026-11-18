@@ -15,6 +15,7 @@ module Magix.StubNix
     Call (..),
     withStubNix,
     setOutcome,
+    setMetadata,
     readCalls,
     getStoreDir,
   )
@@ -34,7 +35,8 @@ import System.Directory
 import System.FilePath ((</>))
 import System.Posix.Env (getEnv, setEnv, unsetEnv)
 
--- | Stubs of @nix-build@ and @nix@, first on @PATH@.
+-- | Stubs of @nix-build@ and @nix@, first on @PATH@. @nix flake metadata@
+-- prints what 'setMetadata' set.
 newtype StubNix = StubNix FilePath
 
 -- | What the following calls of the stubs do.
@@ -45,6 +47,10 @@ data Outcome
   | -- | Write to stderr and exit 1.
     Fail
   deriving (Eq, Show)
+
+-- | Set what @nix flake metadata@ prints.
+setMetadata :: StubNix -> String -> IO ()
+setMetadata (StubNix dir) = writeFile $ dir </> "metadata"
 
 -- | A call of a stub.
 data Call = Call
@@ -66,6 +72,10 @@ stubScript dir scriptName =
       "if [ -e \"$dir/fail\" ]; then",
       "  echo 'error: stub build failed' >&2",
       "  exit 1",
+      "fi",
+      "if [ \"$1 $2\" = 'flake metadata' ]; then",
+      "  cat \"$dir/metadata\"",
+      "  exit",
       "fi",
       "out=",
       "while [ $# -gt 0 ]; do",

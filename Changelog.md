@@ -1,5 +1,13 @@
 # Unreleased
 
+- A flake build rebuilds when its Nixpkgs reference resolves to other
+  contents: `nixpkgs` after the registry changed, a branch that moved, a
+  `path:` flake or one of its unlocked inputs that was edited. The cache hash
+  held the reference's text alone, so a cached script kept the build of its
+  first call. A flake id resolves through the user and the system flake
+  registry to a store path; a reference neither pinned nor resolved so is
+  locked by `nix flake metadata` on every run, which costs about 70 ms. Flake
+  builds rebuild once after upgrading
 - A channel build reads no Nixpkgs overlays or config from the environment
   (`<nixpkgs-overlays>`, `~/.config/nixpkgs`, `NIXPKGS_CONFIG`) and no
   `NIXPKGS_*` variable such as `NIXPKGS_ALLOW_UNFREE`. The cache hash missed
@@ -97,5 +105,5 @@
 
 # Version 0.3.0.0
 
-- Consistently use the word *package* across languages: `runtimeInputs` -\>
+- Consistently use the word _package_ across languages: `runtimeInputs` -\>
   `packages` .

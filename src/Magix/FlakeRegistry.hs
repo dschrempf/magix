@@ -16,6 +16,8 @@
 module Magix.FlakeRegistry
   ( -- * Registries
     FlakeRef (..),
+    PathFlake (..),
+    renderPathFlake,
     RegistryEntry (..),
     Registry (..),
     parseRegistry,
@@ -30,38 +32,72 @@ module Magix.FlakeRegistry
     RegistryFiles (..),
     getRegistryFiles,
     readRegistry,
+    resolveRegistryId,
     resolveFlakeRef,
   )
 where
 
 import Control.Exception (IOException, try)
 import Control.Monad (unless)
-import Data.Aeson (Value, eitherDecodeStrict, encode, withObject, (.:))
+import Data.Aeson (Value (..), eitherDecodeStrict, encode, parseJSON, withObject, (.:))
 import Data.Aeson.KeyMap qualified as KeyMap
-import Data.Aeson.Types (Object, Parser, parseEither)
-import Data.Bifunctor (first)
+import Data.Aeson.Types (Object, Parser, parseEither, parseMaybe)
+import Data.Bifunctor (bimap, first)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.Char (isAlpha, isAlphaNum, isAscii)
 import Data.List (intercalate)
+import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as Map
 import Data.Maybe (listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.Encoding qualified as TE
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
 import Magix.Env (NixEnv (..))
 import System.Directory (getHomeDirectory)
 import System.FilePath (isAbsolute)
 import System.IO.Error (isDoesNotExistError)
+import Text.Printf (printf)
 
 -- | A flake reference, as far as magix resolves it.
 data FlakeRef
   = -- | An indirect reference by a bare id, without ref or rev.
     IndirectRef !Text
-  | PathRef !FilePath
+  | PathRef !PathFlake
   | -- | Any other reference, as JSON.
     OtherRef !Text
   deriving (Eq, Show)
+
+-- | A flake reference of type @path@.
+data PathFlake = PathFlake
+  { -- | Absolute.
+    path :: !FilePath,
+    -- | Such as @narHash@, @rev@ and @lastModified@; a number in decimal.
+    attributes :: !(Map Text Text)
+  }
+  deriving (Eq, Show)
+
+-- | The URL of the reference, like Nix renders it, e.g.
+-- @path:/nix/store/…-source?lastModified=1794537146&narHash=sha256-Wpz/…%2B…%3D@.
+renderPathFlake :: PathFlake -> Text
+renderPathFlake f =
+  "path:" <> percentEncode f.path <> query (Map.toAscList f.attributes)
+  where
+    query [] = ""
+    query xs = "?" <> T.intercalate "&" [percentEncode (T.unpack k) <> "=" <> percentEncode (T.unpack v) | (k, v) <- xs]
+
+-- | Percent-encode all but the unreserved characters and @/:\@@, like Nix
+-- (@percentEncode@ with @allowedInQuery@).
+percentEncode :: String -> Text
+percentEncode = T.pack . concatMap enc . BS.unpack . TE.encodeUtf8 . T.pack
+  where
+    enc w
+      | isAscii c && (isAlphaNum c || c `elem` ("-._~/:@" :: String)) = [c]
+      | otherwise = printf "%%%02X" w
+      where
+        c = toEnum $ fromIntegral w
 
 data RegistryEntry = RegistryEntry
   { from :: !FlakeRef,
@@ -81,14 +117,19 @@ pFlakeRef = withObject "flake reference" $ \o -> do
   case t :: Text of
     -- A ref or rev makes it another reference.
     "indirect" | KeyMap.size o == 2 -> IndirectRef <$> o .: "id"
-    -- Other attributes, such as narHash, describe the path.
     "path" -> do
       p <- o .: "path"
-      pure $ if isAbsolute p then PathRef p else other o
+      let attrs = traverse (parseMaybe pAttribute) $ KeyMap.toMapText $ foldr KeyMap.delete o ["type", "path"]
+      pure $ case attrs of
+        Just as | isAbsolute p -> PathRef $ PathFlake p as
+        _ -> other o
     _ -> pure $ other o
   where
     other :: Object -> FlakeRef
     other = OtherRef . TL.toStrict . TL.decodeUtf8 . encode
+    pAttribute :: Value -> Parser Text
+    pAttribute (String x) = pure x
+    pAttribute v = T.pack . show <$> (parseJSON v :: Parser Integer)
 
 pRegistryEntry :: Value -> Parser RegistryEntry
 pRegistryEntry = withObject "registry entry" $ \o ->
@@ -147,7 +188,7 @@ parseFlakeId r = case r of
 -- resolving to another id restarts the search. Confirmed with
 -- @nix-instantiate --find-file@: the user registry wins, a chain resolves
 -- across registries, and a cycle fails.
-resolveFlakeId :: [Registry] -> Text -> Either FlakeError FilePath
+resolveFlakeId :: [Registry] -> Text -> Either FlakeError PathFlake
 resolveFlakeId registries = go []
   where
     go seen i
@@ -201,15 +242,20 @@ readRegistry f = do
       | otherwise -> Left $ InvalidRegistry f $ show (e :: IOException)
     Right bs -> parseRegistry f bs
 
+-- | Resolve a flake id through the user and the system registry, and return
+-- the registry files searched.
+resolveRegistryId :: NixEnv (Maybe String) -> Text -> IO ([FilePath], Either FlakeError PathFlake)
+resolveRegistryId env i = do
+  files <- registryFileList <$> getRegistryFiles env
+  registries <- traverse readRegistry files
+  pure (files, sequence registries >>= (`resolveFlakeId` i))
+
 -- | Resolve the reference of a @flake:@ entry to a path through the user and
 -- the system registry. Fail with a message naming the registry files, also on
 -- a malformed registry, which Nix skips with a warning.
 resolveFlakeRef :: NixEnv (Maybe String) -> String -> IO (Either String FilePath)
 resolveFlakeRef env r = do
-  files <- getRegistryFiles env
-  result <- case parseFlakeId r of
-    Left e -> pure $ Left e
-    Right i -> do
-      registries <- traverse readRegistry $ registryFileList files
-      pure $ sequence registries >>= (`resolveFlakeId` i)
-  pure $ first (renderFlakeError $ registryFileList files) result
+  (files, result) <- case parseFlakeId r of
+    Left e -> (,Left e) . registryFileList <$> getRegistryFiles env
+    Right i -> resolveRegistryId env i
+  pure $ bimap (renderFlakeError files) (.path) result

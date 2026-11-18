@@ -24,10 +24,11 @@ import Control.Monad (unless)
 import Data.List (isPrefixOf)
 import Data.Text (Text)
 import Data.Text.IO (writeFile)
-import Magix.BuildMode (BuildMode (..))
+import Magix.BuildMode (Nixpkgs (..))
 import Magix.Cache (recordInvokedPath, removeSuperseded)
 import Magix.Config (Config (..))
 import Magix.Expression (getFlakeWrapper)
+import Magix.LockedFlake (LockedFlake (..))
 import Magix.Paths (getBuildExprPath, getPendingBuildDir)
 import System.Directory
   ( canonicalizePath,
@@ -71,8 +72,8 @@ build logger cfg expr = do
     let exprPath = getBuildExprPath pendingDir
     logD $ "Writing Magix Nix expression: " <> exprPath
     writeFile exprPath expr
-    (exitCode, stdOut, stdErr) <- case cfg.buildMode of
-      ChannelBuild nixpkgsPath -> do
+    (exitCode, stdOut, stdErr) <- case cfg.nixpkgs of
+      NixpkgsPath nixpkgsPath -> do
         logD "Building with 'nix-build'"
         nixBuildEnv <- nixBuildEnvironment <$> getEnvironment
         -- The templates import <nixpkgs>; '-I' makes it the hashed Nixpkgs, which
@@ -90,9 +91,9 @@ build logger cfg expr = do
             { env = Just nixBuildEnv
             }
           ""
-      FlakeBuild ref -> do
+      NixpkgsFlake flake -> do
         logD "Writing universal Flake wrapper"
-        wrapper <- getFlakeWrapper ref
+        wrapper <- getFlakeWrapper flake.ref
         let flakePath = pendingDir </> "flake.nix"
         writeFile flakePath wrapper
         logD "Building with 'nix build'"
