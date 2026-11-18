@@ -21,10 +21,14 @@ its first call:
    parameter, `path:/nix/store/…`. Hash the text, as now.
 2. **A flake id** (`nixpkgs`, `flake:nixpkgs`): resolve it through the
    registries like channel mode (`resolveFlakeRef`,
-   `src/Magix/FlakeRegistry.hs`), hash the store path, and build from
-   `path:<store path>`, so the build is what was hashed. A file read, no
-   subprocess. On NixOS the system registry holds the store path
-   (`nix.registry.<id>.flake`).
+   `src/Magix/FlakeRegistry.hs`), and hash and build from the entry's
+   reference: the store path with the entry's `rev`, `lastModified` and
+   `narHash`, the reference Nix resolves the id to (decided 2026-11-18; a bare
+   `path:<store path>` turns nixpkgs' `lib.version` into `….19700101.dirty`).
+   A file read, no subprocess. On NixOS the system registry holds the store
+   path (`nix.registry.<id>.flake`). An id the user and the system registry
+   resolve to no store path, such as one only the global registry holds, is
+   case 3 (decided 2026-11-18).
 3. **Mutable:** everything else, such as a branch, a `path:` outside the store,
    or `git+file:` without `rev`. Only Nix knows the contents: call
    `nix flake metadata --json`, hash the flake's `narHash` and those of its
@@ -33,7 +37,8 @@ its first call:
    2026-11-18, after the first fetch); a cached run costs 5.5 ms. Only a
    script naming a mutable reference pays it (decided 2026-11-18); refusing
    such a reference would rule out the answer to #14 for a library under
-   development.
+   development. A branch such as `github:<owner>/<repo>` pays it too (accepted
+   2026-11-18); magix computes no hash of its own.
 
 Telling 1 from 3 means classifying the reference's text, by the URL forms Nix
 accepts.
@@ -51,5 +56,5 @@ subprocess.
 
 - The draft reply to #14 tells the reader to run `magix -f` after an edit;
   drop that paragraph once case 3 follows the flake.
-- `packages-from-an-overlay` cites the text-only hash as a blocker for a
-  `#!nixpkgs` flake carrying an overlay.
+- Done: `packages-from-an-overlay` no longer cites the text-only hash as a
+  blocker.
