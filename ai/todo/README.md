@@ -1,6 +1,5 @@
 # Order of the todos
 
-`flake-build-rebuilds-on-a-changed-flake`,
 `parse-error-shows-the-header-alone`,
 `format-script-formats-all-code`,
 `script-run-by-store-path-keeps-one-build`,

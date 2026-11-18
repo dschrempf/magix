@@ -1,5 +1,8 @@
 # A flake build rebuilds on a changed flake
 
+Issue a-cached-script-ignores-changes-to-its-nixpkgs-flake (#27), fixed by
+the pull request #26, which closes it on merge.
+
 A flake build hashes the reference's text (`buildModeBytes`,
 `src/Magix/Hash.hs`), and Nix resolves that text again at every build. Where
 the text doesn't fix the flake's contents, a cached script keeps the build of
@@ -54,7 +57,7 @@ subprocess.
 
 ## Afterwards
 
-- The draft reply to #14 tells the reader to run `magix -f` after an edit;
-  drop that paragraph once case 3 follows the flake.
+- Done: the draft reply to #14 no longer tells the reader to run `magix -f`
+  after an edit.
 - Done: `packages-from-an-overlay` no longer cites the text-only hash as a
   blocker.
