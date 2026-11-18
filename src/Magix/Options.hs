@@ -257,7 +257,7 @@ pNixpkgsRef =
       ( metavar "NIXPKGS_REF"
           <> long "nixpkgs-ref"
           <> short 'r'
-          <> help "Nixpkgs Flake reference, e.g. 'nixpkgs' or 'github:NixOS/nixpkgs/nixos-unstable'; when set, uses 'nix build' instead of 'nix-build'"
+          <> help "Nixpkgs Flake reference, e.g. 'nixpkgs' or 'github:NixOS/nixpkgs/nixos-unstable'; when set, uses 'nix build' instead of 'nix-build'. Rebuilds when the reference resolves to other contents. Unless pinned (a commit, 'rev' or 'narHash') or resolved to a store path through the flake registries, the reference costs a call of 'nix flake metadata' on every run"
       )
 
 pScriptPath :: Parser FilePath

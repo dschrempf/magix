@@ -23,14 +23,15 @@ import Data.Foldable qualified as Foldable
 import Data.Text (unpack)
 import Data.Version (Version (versionBranch))
 import GHC.Generics (Generic)
-import Magix.BuildMode (BuildMode (..))
+import Magix.BuildMode (Nixpkgs (..))
+import Magix.LockedFlake (lockedFlakeBytes)
 import Paths_magix (version)
 import Prelude hiding (init)
 
 -- | What a build depends on, besides the script's name, which the slot fixes
 -- (see `getSlotHash`). The build reads a copy of the script, never its path.
 data MagixHashContents = MagixHashContents
-  { buildMode :: !BuildMode,
+  { nixpkgs :: !Nixpkgs,
     scriptContents :: !ByteString
   }
   deriving (Eq, Show, Generic)
@@ -38,9 +39,9 @@ data MagixHashContents = MagixHashContents
 toByteStringWith :: (a -> Builder) -> [a] -> ByteString
 toByteStringWith f = toStrict . toLazyByteString . mconcat . map f
 
-buildModeBytes :: BuildMode -> ByteString
-buildModeBytes (ChannelBuild path) = toByteStringWith charUtf8 $ "channel:" <> path
-buildModeBytes (FlakeBuild ref) = toByteStringWith charUtf8 $ "flake:" <> unpack ref
+nixpkgsBytes :: Nixpkgs -> ByteString
+nixpkgsBytes (NixpkgsPath path) = toByteStringWith charUtf8 $ "channel:" <> path
+nixpkgsBytes (NixpkgsFlake f) = toByteStringWith charUtf8 $ "flake:" <> unpack (lockedFlakeBytes f)
 
 -- | Identify a build within a slot.
 getMagixHash :: MagixHashContents -> ByteString
@@ -50,7 +51,7 @@ getMagixHash x =
       update
       init
       [ toByteStringWith intDec $ versionBranch version,
-        buildModeBytes x.buildMode,
+        nixpkgsBytes x.nixpkgs,
         x.scriptContents
       ]
 

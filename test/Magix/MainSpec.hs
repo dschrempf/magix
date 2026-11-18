@@ -14,11 +14,12 @@ module Magix.MainSpec
   )
 where
 
+import Control.Exception (bracket)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as B
-import Control.Exception (bracket)
+import Data.ByteString.Char8 qualified as B8
 import Data.IORef (modifyIORef', newIORef, readIORef)
-import Data.List (isPrefixOf, isSuffixOf, sort)
+import Data.List (find, isPrefixOf, isSuffixOf, sort)
 import Data.Text qualified as T
 import Data.Text.Encoding.Error (UnicodeException)
 import Magix.BuildMode (BuildMode (..))
@@ -28,7 +29,7 @@ import Magix.Hash (getSlotHash)
 import Magix.Main (cleanCache, getScriptExpression, runMagix)
 import Magix.Options (CleanMode (..), CleanOptions (..), Options (..), PrintOptions (PrintOptions), Rebuild (..), Verbosity (..))
 import Magix.Paths (getSlotDir)
-import Magix.StubNix (Call (..), StubNix, getStoreDir, readCalls, withStubNix)
+import Magix.StubNix (Call (..), Outcome (..), StubNix, getStoreDir, readCalls, setMetadata, setOutcome, withStubNix)
 import Magix.Tools (withTempDir)
 import System.Directory (createDirectory, doesDirectoryExist, doesFileExist, listDirectory, removeFile)
 import System.Exit (ExitCode (..))
@@ -56,13 +57,19 @@ data Env = Env
     options :: !Options
   }
 
--- | Run the action with stubs of Nix, a cache, and a Nixpkgs path in a
--- temporary directory.
+-- | Directories of the flake registries, empty unless a test writes them;
+-- relative to the temporary directory.
+userRegistryDir, systemRegistryDir :: FilePath
+userRegistryDir = "registry-user"
+systemRegistryDir = "registry-system"
+
+-- | Run the action with stubs of Nix, a cache, a Nixpkgs path and flake
+-- registries in a temporary directory.
 withEnv :: (FilePath -> Env -> IO a) -> IO a
 withEnv action = withTempDir $ \tmp -> withStubNix scriptName $ \stub -> do
   let cacheDir = tmp </> "cache"
       nixpkgsDir = tmp </> "nixpkgs"
-  mapM_ createDirectory [cacheDir, nixpkgsDir]
+  mapM_ createDirectory [cacheDir, nixpkgsDir, tmp </> userRegistryDir, tmp </> systemRegistryDir]
   action tmp $
     Env
       { stub = stub,
@@ -74,7 +81,7 @@ withEnv action = withTempDir $ \tmp -> withStubNix scriptName $ \stub -> do
               cachePath = Just cacheDir,
               buildMode = Just (ChannelBuild nixpkgsDir),
               magixEnv = MagixEnv Nothing,
-              nixEnv = NixEnv Nothing Nothing Nothing Nothing,
+              nixEnv = NixEnv Nothing (Just $ tmp </> userRegistryDir) Nothing (Just $ tmp </> systemRegistryDir),
               scriptPath = tmp </> scriptName,
               scriptArgs = []
             }
@@ -156,6 +163,62 @@ isExecutableOf stub exe =
     && takeFileName (takeDirectory exe) == "bin"
     && takeDirectory (takeDirectory (takeDirectory exe)) == getStoreDir stub
 
+-- | Run the action on a script building with the flake reference.
+withFlakeScript :: String -> (FilePath -> Env -> IO a) -> IO a
+withFlakeScript r action = withEnv $ \tmp e -> do
+  B.writeFile e.options.scriptPath $ "#!/usr/bin/env magix\n#!nixpkgs " <> B8.pack r <> "\n#!magix bash\necho Hello\n"
+  action tmp e
+
+nixpkgsStorePath, otherStorePath :: FilePath
+nixpkgsStorePath = "/nix/store/zakqk45ps6q9s4fjnjqkvp8hdnhkgd5f-source"
+otherStorePath = "/nix/store/8xdavwrxdhls542hxisf6zgamn0m13ls-source"
+
+-- | Map @nixpkgs@ to the path, like NixOS does.
+writeSystemRegistry :: FilePath -> FilePath -> IO ()
+writeSystemRegistry tmp path =
+  writeFile (tmp </> systemRegistryDir </> "registry.json") $
+    "{\"version\":2,\"flakes\":[{\"exact\":true,\"from\":{\"id\":\"nixpkgs\",\"type\":\"indirect\"},"
+      <> "\"to\":{\"lastModified\":1794537146,\"narHash\":\"sha256-Wpz/7x+M=\",\"path\":\""
+      <> path
+      <> "\",\"type\":\"path\"}}]}"
+
+-- | The reference Nix resolves the entry of 'writeSystemRegistry' to.
+registryRef :: FilePath -> String
+registryRef path = "path:" <> path <> "?lastModified=1794537146&narHash=sha256-Wpz/7x%2BM%3D"
+
+mutableRef, fixedRef, lockedUrl :: String
+mutableRef = "github:NixOS/nixpkgs/nixos-unstable"
+fixedRef = "github:NixOS/nixpkgs/d5cc6833999746cffdfe0598f7bc801a57b887a9"
+lockedUrl = "github:NixOS/nixpkgs/d5cc6833999746cffdfe0598f7bc801a57b887a9?narHash=sha256-flake"
+
+-- | The output of @nix flake metadata --json@, locking to the URL a flake with
+-- an input of the NAR hash.
+metadataJson :: String -> String -> String
+metadataJson url inputNarHash =
+  "{\"url\":\""
+    <> url
+    <> "\",\"locked\":{\"narHash\":\"sha256-flake\",\"type\":\"github\"},"
+    <> "\"locks\":{\"nodes\":{\"root\":{\"inputs\":{\"i\":\"i\"}},\"i\":{\"locked\":{\"narHash\":\""
+    <> inputNarHash
+    <> "\",\"type\":\"path\"}}},\"root\":\"root\",\"version\":7}}"
+
+-- | The subcommand of each call of @nix@, such as @build@.
+getNixCalls :: StubNix -> IO [String]
+getNixCalls stub = concatMap (take 1 . (.args)) . filter ((== "nix") . (.program)) <$> readCalls stub
+
+-- | The Nixpkgs reference of the flake of the build of the script, if any.
+readBuiltFlake :: Env -> IO (Maybe String)
+readBuiltFlake e = do
+  let slot = getSlot e e.options.scriptPath
+  builds <- filter ("-build" `isSuffixOf`) <$> listDirectory slot
+  case builds of
+    [b] -> do
+      flake <- readFile $ slot </> b </> "flake.nix"
+      pure $ takeWhile (/= '"') . drop (length urlPrefix) <$> find (urlPrefix `isPrefixOf`) (map (dropWhile (== ' ')) $ lines flake)
+    _ -> pure Nothing
+  where
+    urlPrefix = "inputs.nixpkgs.url = \""
+
 spec :: Spec
 spec = do
   describe "runMagix" $ do
@@ -192,13 +255,6 @@ spec = do
         length (filter ("-build" `isSuffixOf`) entries) `shouldBe` 1
         length (filter ("-result" `isSuffixOf`) entries) `shouldBe` 1
 
-    it "builds a Flake for a nixpkgs directive" $
-      withScript "#!/usr/bin/env magix\n#!nixpkgs nixpkgs\n#!magix bash\necho Hello\n" $ \e -> do
-        exe <- run e.options
-        map (\c -> (c.program, take 1 c.args)) <$> readCalls e.stub
-          `shouldReturn` [("nix", ["build"])]
-        exe `shouldSatisfy` isExecutableOf e.stub
-
     it "logs one line at INFO, naming the script, when it builds" $
       withScript script $ \e ->
         runLoggingInfo e.options `shouldReturn` ["Building script: " <> e.options.scriptPath]
@@ -230,6 +286,65 @@ spec = do
         errs <- runLoggingErrors e.options
         errs `shouldSatisfy` isUnreadableError e.options "inappropriate type (is a directory)"
         readCalls e.stub `shouldReturn` []
+
+  describe "runMagix, given a #!nixpkgs flake reference" $ do
+    it "builds a flake id from the store path of its registry entry, asking Nix nothing else" $
+      withFlakeScript "nixpkgs" $ \tmp e -> do
+        writeSystemRegistry tmp nixpkgsStorePath
+        exe <- run e.options
+        getNixCalls e.stub `shouldReturn` ["build"]
+        exe `shouldSatisfy` isExecutableOf e.stub
+        readBuiltFlake e `shouldReturn` Just (registryRef nixpkgsStorePath)
+
+    it "rebuilds a flake id when its registry entry changes" $
+      withFlakeScript "nixpkgs" $ \tmp e -> do
+        writeSystemRegistry tmp nixpkgsStorePath
+        _ <- run e.options
+        writeSystemRegistry tmp otherStorePath
+        _ <- run e.options
+        getNixCalls e.stub `shouldReturn` ["build", "build"]
+        readBuiltFlake e `shouldReturn` Just (registryRef otherStorePath)
+
+    it "asks Nix to lock a flake id the registries resolve to no store path" $
+      withFlakeScript "nixpkgs" $ \tmp e -> do
+        writeSystemRegistry tmp $ tmp </> "nixpkgs"
+        setMetadata e.stub $ metadataJson lockedUrl "sha256-input"
+        _ <- run e.options
+        getNixCalls e.stub `shouldReturn` ["flake", "build"]
+        readBuiltFlake e `shouldReturn` Just lockedUrl
+
+    it "asks Nix to lock a mutable reference, and builds from the locked one" $
+      withFlakeScript mutableRef $ \_ e -> do
+        setMetadata e.stub $ metadataJson lockedUrl "sha256-input"
+        _ <- run e.options
+        calls <- readCalls e.stub
+        take 1 calls `shouldBe` [Call "nix" ["flake", "metadata", "--json", "--no-write-lock-file", mutableRef]]
+        readBuiltFlake e `shouldReturn` Just lockedUrl
+
+    it "rebuilds a mutable reference when Nix locks it to other contents, and only then" $
+      withFlakeScript mutableRef $ \_ e -> do
+        setMetadata e.stub $ metadataJson lockedUrl "sha256-input"
+        _ <- run e.options
+        _ <- run e.options
+        -- Only an input moved, such as one of a flake without lock file.
+        setMetadata e.stub $ metadataJson lockedUrl "sha256-input-moved"
+        _ <- run e.options
+        getNixCalls e.stub
+          `shouldReturn` ["flake", "build", "flake", "flake", "build"]
+
+    it "asks Nix nothing but the build for a reference fixing its contents" $
+      withFlakeScript fixedRef $ \_ e -> do
+        _ <- run e.options
+        _ <- run e.options
+        getNixCalls e.stub `shouldReturn` ["build"]
+        readBuiltFlake e `shouldReturn` Just fixedRef
+
+    it "exits with failure, and builds nothing, when Nix fails to lock" $
+      withFlakeScript mutableRef $ \_ e -> do
+        setOutcome e.stub Fail
+        run e.options `shouldThrow` (== ExitFailure 1)
+        getNixCalls e.stub `shouldReturn` ["flake"]
+        getCacheEntries e.cacheDir `shouldReturn` []
 
   describe "getScriptExpression" $ do
     it "returns the expression, builds nothing, and touches no cache, without NIX_PATH" $

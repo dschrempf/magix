@@ -19,8 +19,9 @@ import Data.Text (Text)
 import Data.Text.IO (readFile, writeFile)
 import Magix.Build (BuildStatus (..), build, getBuildStatus, resolveResult, withBuildLock)
 import Magix.Cache (readInvokedPath)
-import Magix.Config (BuildMode (..), Config (..))
+import Magix.Config (Config (..), Nixpkgs (..))
 import Magix.Expression (getFlakeWrapper)
+import Magix.LockedFlake (LockedFlake (LockedFlake))
 import Magix.Paths (getPendingBuildDir)
 import Magix.StubNix (Call (..), Outcome (..), StubNix, getStoreDir, readCalls, setOutcome, withStubNix)
 import Magix.Tools (setFakeHash, withFakeConfig)
@@ -81,7 +82,7 @@ spec = do
   describe "build" $ do
     it "writes the build directory, records the invoked path, and links the result" $
       withScript $ \stub c0 -> do
-        let c = c0 {buildMode = ChannelBuild "/nixpkgs"}
+        let c = c0 {nixpkgs = NixpkgsPath "/nixpkgs"}
         getBuildStatus c `shouldReturn` NeedToBuild
         buildLocked c
         readFile c.buildExprPath `shouldReturn` expr
@@ -97,7 +98,7 @@ spec = do
     it "builds a Flake through the wrapper" $
       withScript $ \stub c0 -> do
         let ref = "github:NixOS/nixpkgs/nixos-unstable"
-            c = c0 {buildMode = FlakeBuild ref}
+            c = c0 {nixpkgs = NixpkgsFlake $ LockedFlake ref []}
         buildLocked c
         wrapper <- getFlakeWrapper ref
         readFile (c.buildDir </> "flake.nix") `shouldReturn` wrapper

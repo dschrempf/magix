@@ -13,6 +13,7 @@
 -- Creation date: Fri Oct 18 09:12:29 2024.
 module Magix.Config
   ( BuildMode (..),
+    Nixpkgs (..),
     Config (..),
     resolveBuildMode,
     getConfig,
@@ -24,10 +25,11 @@ where
 import Control.Applicative ((<|>))
 import Data.ByteString (ByteString)
 import Data.Text (Text)
-import Magix.BuildMode (BuildMode (..))
+import Magix.BuildMode (BuildMode (..), Nixpkgs (..))
 import Magix.Env (NixEnv (..), nixEnvDesc)
 import Magix.FlakeRegistry (resolveFlakeRef)
 import Magix.Hash (MagixHashContents (..), getMagixHash, getSlotHash)
+import Magix.LockedFlake (lockFlakeRef)
 import Magix.NixpkgsPath (canonicalIfExists, getDefaultNixpkgsPath, renderEntryError, resolveNixpkgs)
 import Magix.Options (Options (..))
 import Magix.Paths
@@ -51,7 +53,7 @@ data Config = Config
     -- | Canonical path of the script, which the build copies.
     scriptPath :: !FilePath,
     scriptName :: !String,
-    buildMode :: !BuildMode,
+    nixpkgs :: !Nixpkgs,
     -- | See `getMagixHash`.
     magixHash :: !ByteString,
     -- | Cache directory containing one slot per invoked path.
@@ -85,28 +87,28 @@ getDefaultNixpkgsPathOrFail env = case env.nixPath of
       resolveNixpkgs (resolveFlakeRef env) e
         >>= either (die . renderEntryError) (maybe (resolveFirst np es) pure)
 
--- | Resolve the build mode.
+-- | Resolve the Nixpkgs of the build mode, and lock a flake reference.
 -- Priority: script's #!nixpkgs directive > CLI/env > NIX_PATH channel
-resolveBuildMode :: Options -> Maybe Text -> IO BuildMode
+resolveBuildMode :: Options -> Maybe Text -> IO Nixpkgs
 resolveBuildMode opts mDirectiveRef =
   case (FlakeBuild <$> mDirectiveRef) <|> opts.buildMode of
     Just (ChannelBuild p) ->
       canonicalIfExists p
-        >>= maybe (die $ "Cannot use the Nixpkgs path '" <> p <> "' of '--nixpkgs-path': it does not exist.") (pure . ChannelBuild)
-    Just (FlakeBuild r) -> pure $ FlakeBuild r
-    Nothing -> ChannelBuild <$> getDefaultNixpkgsPathOrFail opts.nixEnv
+        >>= maybe (die $ "Cannot use the Nixpkgs path '" <> p <> "' of '--nixpkgs-path': it does not exist.") (pure . NixpkgsPath)
+    Just (FlakeBuild r) -> NixpkgsFlake <$> lockFlakeRef opts.nixEnv r
+    Nothing -> NixpkgsPath <$> getDefaultNixpkgsPathOrFail opts.nixEnv
 
 getConfig :: Options -> ByteString -> Maybe Text -> IO Config
 getConfig opts scriptContents mDirectiveRef = do
   invokedPath <- makeAbsolute p
   scriptPath <- canonicalizePath p
   cacheDir <- getCacheDir opts.cachePath
-  buildMode <- resolveBuildMode opts mDirectiveRef
+  nixpkgs <- resolveBuildMode opts mDirectiveRef
   let scriptName = getScriptName p
       magixHash =
         getMagixHash $
           MagixHashContents
-            { buildMode = buildMode,
+            { nixpkgs = nixpkgs,
               scriptContents = scriptContents
             }
       cacheLockPath = getCacheLockPath cacheDir

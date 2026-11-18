@@ -27,11 +27,12 @@ import Data.ByteString (ByteString)
 import Data.Either (isLeft)
 import Data.List qualified as L
 import Data.Text (Text, isInfixOf, unwords)
-import Magix.BuildMode (BuildMode (..))
+import Magix.BuildMode (Nixpkgs (..))
 import Magix.Config (Config (..))
 import Magix.Expression (getFlakeWrapper, getNixExpression, getReplacements, getTemplate)
 import Magix.Hash (getSlotHash)
 import Magix.Language.Directives (LanguageDirectives, getLanguage)
+import Magix.LockedFlake (LockedFlake (LockedFlake))
 import Magix.Paths
   ( getBuildDir,
     getBuildExprPath,
@@ -75,7 +76,7 @@ withFakeConfig action = withTempDir $ \tmp -> do
         { invokedPath = invokedPath,
           scriptPath = invokedPath,
           scriptName = scriptName,
-          buildMode = ChannelBuild (tmp </> "fakeNixpkgsPath"),
+          nixpkgs = NixpkgsPath (tmp </> "fakeNixpkgsPath"),
           magixHash = "",
           cacheDir = cacheDir,
           cacheLockPath = getCacheLockPath cacheDir,
@@ -88,7 +89,7 @@ withFakeConfig action = withTempDir $ \tmp -> do
         }
 
 withFakeFlakeConfig :: Text -> (Config -> IO a) -> IO a
-withFakeFlakeConfig ref action = withFakeConfig $ \c -> action c {buildMode = FlakeBuild ref}
+withFakeFlakeConfig ref action = withFakeConfig $ \c -> action c {nixpkgs = NixpkgsFlake $ LockedFlake ref []}
 
 -- | Set the hash of the contents, and the paths of the build named by it.
 setFakeHash :: ByteString -> Config -> Config

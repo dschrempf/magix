@@ -23,12 +23,13 @@ import Data.List (dropWhileEnd, isInfixOf)
 import Data.Text (pack, unpack)
 import Data.Text.IO qualified as T
 import Magix.Build (nixBuildEnvironment)
-import Magix.BuildMode (BuildMode (..))
+import Magix.BuildMode (Nixpkgs (..))
 import Magix.Config (Config (..))
 import Magix.Directives (Directives (..), getDirectives)
 import Magix.Expression (getFlakeWrapper, getNixExpression)
 import Magix.Language.Directives (getLanguage)
 import Magix.Language.Language (Language (..), getLanguageNameLowercase)
+import Magix.LockedFlake (LockedFlake (..))
 import System.Directory (copyFile, createDirectoryIfMissing)
 import System.Environment (getEnvironment)
 import System.Exit (ExitCode (..))
@@ -62,13 +63,13 @@ getMinimalScript language =
 
 -- | Only the script name enters the expression; the paths point into the build
 -- directory.
-getConfigIn :: FilePath -> BuildMode -> Config
+getConfigIn :: FilePath -> Nixpkgs -> Config
 getConfigIn dir mode =
   Config
     { invokedPath = dir </> "script",
       scriptPath = dir </> "script",
       scriptName = "minimal",
-      buildMode = mode,
+      nixpkgs = mode,
       magixHash = "",
       cacheDir = dir,
       cacheLockPath = dir </> "lock",
@@ -82,10 +83,10 @@ getConfigIn dir mode =
 
 -- | Write the build directory of the language's minimal test script, as
 -- `Magix.Build.build` does, and run the action on it.
-withBuildDir :: Language -> BuildMode -> (FilePath -> IO a) -> IO a
+withBuildDir :: Language -> Nixpkgs -> (FilePath -> IO a) -> IO a
 withBuildDir language = withScriptBuildDir language (getMinimalScript language)
 
-withScriptBuildDir :: Language -> FilePath -> BuildMode -> (FilePath -> IO a) -> IO a
+withScriptBuildDir :: Language -> FilePath -> Nixpkgs -> (FilePath -> IO a) -> IO a
 withScriptBuildDir language script mode action =
   withSystemTempDirectory "magix-template" $ \dir -> do
     directives <- T.readFile script >>= either throwIO pure . getDirectives script
@@ -94,15 +95,15 @@ withScriptBuildDir language script mode action =
     let cfg = getConfigIn dir mode
     getNixExpression cfg.scriptName directives.language >>= T.writeFile cfg.buildExprPath
     case mode of
-      ChannelBuild _ -> pure ()
-      FlakeBuild ref -> getFlakeWrapper ref >>= T.writeFile (dir </> "flake.nix")
+      NixpkgsPath _ -> pure ()
+      NixpkgsFlake flake -> getFlakeWrapper flake.ref >>= T.writeFile (dir </> "flake.nix")
     action dir
 
 -- | Run the action on the build directory and the Nixpkgs path.
 withChannelBuildDir :: Language -> (FilePath -> FilePath -> IO a) -> IO a
 withChannelBuildDir language action = do
   nixpkgs <- getNixpkgs
-  withBuildDir language (ChannelBuild nixpkgs) (`action` nixpkgs)
+  withBuildDir language (NixpkgsPath nixpkgs) (`action` nixpkgs)
 
 -- | Instantiate the build directory against the Nixpkgs path, in the
 -- environment `Magix.Build.build` gives @nix-build@ when magix runs with the
@@ -129,7 +130,7 @@ instantiateWithHomeOverlay dir nixpkgs =
 withFlakeBuildDir :: Language -> (FilePath -> IO a) -> IO a
 withFlakeBuildDir language action = do
   nixpkgs <- getNixpkgs
-  withBuildDir language (FlakeBuild $ pack $ "path:" <> nixpkgs) action
+  withBuildDir language (NixpkgsFlake $ LockedFlake (pack $ "path:" <> nixpkgs) []) action
 
 spec :: Spec
 spec = do
@@ -140,7 +141,7 @@ spec = do
         let script = scriptDir </> "unfree"
         writeFile script "#!/usr/bin/env magix\n#!magix bash\n#!packages unrar\n\nunrar\n"
         nixpkgs <- getNixpkgs
-        withScriptBuildDir Bash script (ChannelBuild nixpkgs) $ \dir -> do
+        withScriptBuildDir Bash script (NixpkgsPath nixpkgs) $ \dir -> do
           (code, _, err) <- instantiate [("NIXPKGS_ALLOW_UNFREE", "1")] dir nixpkgs
           code `shouldSatisfy` (/= ExitSuccess)
           err `shouldSatisfy` isInfixOf "unfree"

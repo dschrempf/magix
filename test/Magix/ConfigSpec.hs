@@ -17,10 +17,11 @@ where
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.Text (Text)
-import Magix.BuildMode (BuildMode (..))
+import Magix.BuildMode (BuildMode (..), Nixpkgs (..))
 import Magix.Config (Config (..), getConfig, resolveBuildMode)
 import Magix.Env (MagixEnv (..), NixEnv (..))
 import Magix.Hash (getSlotHash)
+import Magix.LockedFlake (LockedFlake (LockedFlake))
 import Magix.Options (Options (..), Rebuild (..), Verbosity (..))
 import Magix.Paths (getSlotDir)
 import Magix.Tools (withTempDir)
@@ -30,8 +31,8 @@ import System.Directory
     removeFile,
     withCurrentDirectory,
   )
-import System.FilePath ((</>))
 import System.Exit (ExitCode (..))
+import System.FilePath ((</>))
 import System.Posix (createSymbolicLink)
 import Test.Hspec (Spec, describe, it, shouldBe, shouldNotBe, shouldReturn, shouldThrow)
 
@@ -50,7 +51,11 @@ contents :: ByteString
 contents = "#!/usr/bin/env magix\n#!magix bash\n\necho Hello\n"
 
 ref :: Text
-ref = "github:NixOS/nixpkgs/nixos-unstable"
+ref = "github:NixOS/nixpkgs/d5cc6833999746cffdfe0598f7bc801a57b887a9"
+
+-- | The reference fixes its contents.
+flake :: Nixpkgs
+flake = NixpkgsFlake $ LockedFlake ref []
 
 withFixture :: (Fixture -> IO a) -> IO a
 withFixture action = withTempDir $ \tmp -> do
@@ -132,7 +137,7 @@ optionsWith m nixPath =
     }
 
 -- | Resolve the build mode without a @#!nixpkgs@ directive.
-resolveNixPath :: String -> IO BuildMode
+resolveNixPath :: String -> IO Nixpkgs
 resolveNixPath nixPath = resolveBuildMode (optionsWith Nothing (Just nixPath)) Nothing
 
 dies :: ExitCode -> Bool
@@ -144,27 +149,27 @@ spec = do
     it "prefers the #!nixpkgs directive to the options and NIX_PATH" $ withTempDir $ \nixpkgs -> do
       let nixPath = Just $ "nixpkgs=" <> nixpkgs
       resolveBuildMode (optionsWith (Just $ ChannelBuild nixpkgs) nixPath) (Just ref)
-        `shouldReturn` FlakeBuild ref
+        `shouldReturn` flake
       resolveBuildMode (optionsWith (Just $ FlakeBuild "nixpkgs") nixPath) (Just ref)
-        `shouldReturn` FlakeBuild ref
-      resolveBuildMode (optionsWith Nothing Nothing) (Just ref) `shouldReturn` FlakeBuild ref
+        `shouldReturn` flake
+      resolveBuildMode (optionsWith Nothing Nothing) (Just ref) `shouldReturn` flake
 
     it "prefers the options to NIX_PATH" $ withTempDir $ \nixpkgs -> do
       let other = nixpkgs </> "other"
       createDirectory other
       let nixPath = Just $ "nixpkgs=" <> nixpkgs
       resolveBuildMode (optionsWith (Just $ FlakeBuild ref) nixPath) Nothing
-        `shouldReturn` FlakeBuild ref
+        `shouldReturn` flake
       resolveBuildMode (optionsWith (Just $ ChannelBuild other) nixPath) Nothing
-        `shouldReturn` ChannelBuild other
+        `shouldReturn` NixpkgsPath other
       resolveBuildMode (optionsWith (Just $ ChannelBuild other) Nothing) Nothing
-        `shouldReturn` ChannelBuild other
+        `shouldReturn` NixpkgsPath other
 
     it "resolves symbolic links in the Nixpkgs path of the options" $ withTempDir $ \tmp -> do
       createDirectory (tmp </> "target")
       createSymbolicLink (tmp </> "target") (tmp </> "link")
       resolveBuildMode (optionsWith (Just $ ChannelBuild $ tmp </> "link") Nothing) Nothing
-        `shouldReturn` ChannelBuild (tmp </> "target")
+        `shouldReturn` NixpkgsPath (tmp </> "target")
 
     it "fails if the Nixpkgs path of the options does not exist" $ withTempDir $ \tmp -> do
       createSymbolicLink (tmp </> "missing") (tmp </> "dangling")
@@ -188,9 +193,9 @@ spec = do
             <> ":nixpkgs="
             <> (tmp </> "last")
         )
-        `shouldReturn` ChannelBuild (tmp </> "dir" </> "nixpkgs")
+        `shouldReturn` NixpkgsPath (tmp </> "dir" </> "nixpkgs")
       resolveNixPath ("nixpkgs=" <> (tmp </> "other") <> ":nixpkgs=" <> (tmp </> "last"))
-        `shouldReturn` ChannelBuild (tmp </> "other")
+        `shouldReturn` NixpkgsPath (tmp </> "other")
 
     it "fails if NIX_PATH is unset" $
       resolveBuildMode (optionsWith Nothing Nothing) Nothing `shouldThrow` dies
@@ -247,7 +252,7 @@ spec = do
     it "hashes another build mode differently" $ do
       withFixture $ \fx -> do
         c <- getConfigRelative fx
-        c' <- withCurrentDirectory fx.linkDir $ getConfigWith fx "nixpkgs" contents "run"
+        c' <- withCurrentDirectory fx.linkDir $ getConfigWith fx "path:/nix/store/00000000000000000000000000000000-source" contents "run"
         c'.magixHash `shouldNotBe` c.magixHash
 
   describe "getConfig (NIX_PATH)" $ do
@@ -257,10 +262,10 @@ spec = do
         createSymbolicLink (nixpkgs </> "target") (nixpkgs </> "link")
         c <- getChannelConfig fx $ "nixpkgs=" <> (nixpkgs </> "link")
         c' <- getChannelConfig fx $ "nixpkgs=" <> (nixpkgs </> "target")
-        c.buildMode `shouldBe` ChannelBuild (nixpkgs </> "target")
+        c.nixpkgs `shouldBe` NixpkgsPath (nixpkgs </> "target")
         c.magixHash `shouldBe` c'.magixHash
 
     it "skips a Nixpkgs path that does not exist" $ do
       withFixture $ \fx -> withTempDir $ \nixpkgs -> do
         c <- getChannelConfig fx $ "nixpkgs=" <> (nixpkgs </> "missing") <> ":nixpkgs=" <> nixpkgs
-        c.buildMode `shouldBe` ChannelBuild nixpkgs
+        c.nixpkgs `shouldBe` NixpkgsPath nixpkgs

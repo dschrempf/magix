@@ -1,10 +1,10 @@
 # `#!packages` from an overlay
 
 `#!packages` resolves against `import <nixpkgs> { }`, with no overlay and
-no `config` (`allowUnfree`). A `#!nixpkgs` flake reference could name a
-flake whose `legacyPackages` carries an overlay, but its cache hash holds
-the reference's text alone, the problem of
-`flake-nix-path-entry-resolves-to-a-store-path` again.
+no `config` (`allowUnfree`). A `#!nixpkgs` flake reference can name a
+flake whose `legacyPackages` carries an overlay. Since
+`flake-build-rebuilds-on-a-changed-flake`, an edit of that flake rebuilds
+the script; an unpinned flake costs a `nix flake metadata` call per run.
 
 Two uses wait on it (2026-11-17). overriding-packages-for-use-with-magix
 (#14) asks to build a Haskell script against a modified library. A system

@@ -256,7 +256,7 @@ check_flake_nix_path_entry() {
   output=$(NIX_CONFIG_HOME="${config}" NIX_PATH=nixpkgs=flake:magix-nixpkgs \
     cabal run -v0 magix -- --cache-path "${cache}" -v test-scripts/bash/minimal 2>&1) ||
     fail "the build with a 'flake:' entry failed: ${output}"
-  grep -qF "ChannelBuild \"${nixpkgs}\"" <<<"${output}" ||
+  grep -qF "NixpkgsPath \"${nixpkgs}\"" <<<"${output}" ||
     fail "the 'flake:' entry did not resolve to ${nixpkgs}: ${output}"
 }
 
