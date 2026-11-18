@@ -13,8 +13,8 @@
 -- The generators produce what the grammar accepts: a value is a non-empty
 -- sequence of alphanumeric, punctuation and symbol characters; inline white
 -- space is what megaparsec's @hspace@ accepts; directive lines follow each
--- other without blank lines; the script body does not start with @#!@ after
--- white space.
+-- other without blank lines, in any order; the script body does not start with
+-- @#!@ after white space.
 module Magix.DirectivesPropertiesSpec
   ( spec,
   )
@@ -68,11 +68,15 @@ data Directive = Directive
   }
   deriving (Show)
 
--- | The lines of a script up to its body.
+-- | The lines of a script up to its body. The Magix directive goes before the
+-- language directive at 'magixAt', then the Nixpkgs directive before the line at
+-- 'nixpkgsAt'; both indices wrap around, so that a shrunk header stays valid.
 data Header = Header
   { shebang :: !Directive,
     nixpkgs :: !(Maybe Directive),
+    nixpkgsAt :: !Int,
     magix :: !Directive,
+    magixAt :: !Int,
     language :: !Language,
     directives :: ![Directive],
     -- | Nothing: the last directive ends the script, without a newline.
@@ -110,7 +114,8 @@ renderDirective d = "#!" <> d.name <> d.gap <> foldMap (uncurry (<>)) d.values
 render :: Header -> Text
 render h = T.intercalate "\n" (map renderDirective ls) <> maybe "" ("\n" <>) h.body
   where
-    ls = [h.shebang] <> toList h.nixpkgs <> [h.magix] <> h.directives
+    ls = h.shebang : foldr (insertAt h.nixpkgsAt) (insertAt h.magixAt h.magix h.directives) h.nixpkgs
+    insertAt i x xs = let (a, b) = splitAt (i `mod` (length xs + 1)) xs in a <> [x] <> b
 
 isHSpaceChar :: Char -> Bool
 isHSpaceChar c = isSpace c && c /= '\n' && c /= '\r'
@@ -166,8 +171,10 @@ genHeader l = do
   n <- oneof [pure Nothing, Just <$> (genValue >>= genDirectiveWith "nixpkgs" . pure)]
   m <- genDirectiveWith "magix" (getLanguageNameLowercase l :| [])
   ds <- scale (min 8) $ listOf (elements (toList $ getDirectiveNames l) >>= genDirective)
+  nAt <- chooseInt (0, length ds + 1)
+  mAt <- chooseInt (0, length ds)
   b <- oneof [pure Nothing, Just <$> genBody]
-  pure $ Header s n m l ds b
+  pure $ Header s n nAt m mAt l ds b
 
 -- | Shrink the white space to single spaces, and none after the last value.
 shrinkSpaces :: Directive -> [Directive]
@@ -194,7 +201,9 @@ shrinkHeader h =
   [h {shebang = d} | d <- shrinkSpaces h.shebang]
     <> [h {nixpkgs = Nothing} | Just _ <- [h.nixpkgs]]
     <> [h {nixpkgs = Just d} | Just n <- [h.nixpkgs], d <- shrinkSpaces n]
+    <> [h {nixpkgsAt = i} | i <- shrinkIntegral h.nixpkgsAt]
     <> [h {magix = d} | d <- shrinkSpaces h.magix]
+    <> [h {magixAt = i} | i <- shrinkIntegral h.magixAt]
     <> [h {directives = ds} | ds <- shrinkList shrinkDirective h.directives]
     <> [h {body = Just ""} | Just b <- [h.body], b /= ""]
 

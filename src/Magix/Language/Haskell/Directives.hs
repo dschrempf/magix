@@ -11,7 +11,7 @@
 -- Creation date: Fri Oct 18 09:17:40 2024.
 module Magix.Language.Haskell.Directives
   ( HaskellDirectives (..),
-    pHaskellDirectives,
+    pHaskellDirective,
   )
 where
 
@@ -20,7 +20,6 @@ import Data.Text (Text)
 import Magix.Language.Common.Directives
   ( Parser,
     pDirectiveWithValues,
-    pManyDirectives,
   )
 import Text.Megaparsec (try)
 import Prelude hiding (readFile)
@@ -50,5 +49,6 @@ pGhcFlags = do
   flags <- pDirectiveWithValues "ghcFlags"
   pure $ HaskellDirectives [] flags
 
-pHaskellDirectives :: Parser HaskellDirectives
-pHaskellDirectives = pManyDirectives $ try pHaskellPackages <|> pGhcFlags
+-- | One Haskell directive line, without its end.
+pHaskellDirective :: Parser HaskellDirectives
+pHaskellDirective = try pHaskellPackages <|> pGhcFlags

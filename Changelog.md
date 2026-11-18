@@ -1,5 +1,9 @@
 # Unreleased
 
+- The directives after the shebang come in any order. `#!nixpkgs` parsed only
+  right after the shebang, and elsewhere failed with an error naming another
+  directive. A second `#!magix` or `#!nixpkgs` directive, and a missing
+  `#!magix` directive, fail with an error naming it
 - A flake build rebuilds when its Nixpkgs reference resolves to other
   contents: `nixpkgs` after the registry changed, a branch that moved, a
   `path:` flake or one of its unlocked inputs that was edited. The cache hash

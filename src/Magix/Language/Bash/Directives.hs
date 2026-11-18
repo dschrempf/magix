@@ -11,7 +11,7 @@
 -- Creation date: Fri Oct 18 09:17:40 2024.
 module Magix.Language.Bash.Directives
   ( BashDirectives (..),
-    pBashDirectives,
+    pBashDirective,
   )
 where
 
@@ -19,12 +19,12 @@ import Data.Text (Text)
 import Magix.Language.Common.Directives
   ( Parser,
     pDirectiveWithValues,
-    pManyDirectives,
   )
 import Prelude hiding (readFile)
 
 newtype BashDirectives = BashDirectives {_packages :: [Text]}
   deriving (Eq, Show, Semigroup, Monoid)
 
-pBashDirectives :: Parser BashDirectives
-pBashDirectives = pManyDirectives $ BashDirectives <$> pDirectiveWithValues "packages"
+-- | One Bash directive line, without its end.
+pBashDirective :: Parser BashDirectives
+pBashDirective = BashDirectives <$> pDirectiveWithValues "packages"

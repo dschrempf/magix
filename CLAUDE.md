@@ -47,7 +47,7 @@ CI runs `nix build` and then `nix develop .#check --command check`.
 
 ### Directive Parsing (`src/Magix/Directives.hs`, `src/Magix/Language/*/Directives.hs`)
 
-Scripts are parsed with `megaparsec`. The top-level parser (`pDirectives`) reads the shebang, then dispatches to a language-specific parser based on the `#!magix <language>` directive. Each language module defines its own `Directives` type and parser (e.g. `BashDirectives`, `HaskellDirectives`). All language `Directives` are unified via the `Directives` sum type in `src/Magix/Language/Directives.hs`.
+Scripts are parsed with `megaparsec`. The top-level parser (`pDirectives`) reads the shebang, looks ahead for the `#!magix <language>` directive, then parses the directive lines in any order, with the language's parser of one line (`getDirectiveParser`) among them. Each language module defines its own `Directives` monoid and one-line parser (e.g. `BashDirectives`, `pBashDirective`). All language `Directives` are unified via the `Directives` sum type in `src/Magix/Language/Directives.hs`.
 
 ### Nix Expression Generation (`src/Magix/Expression.hs`, `src/Magix/Language/*/Expression.hs`)
 

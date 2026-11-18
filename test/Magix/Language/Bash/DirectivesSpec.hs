@@ -15,7 +15,8 @@ module Magix.Language.Bash.DirectivesSpec
 where
 
 import Data.Text (Text, unlines)
-import Magix.Language.Bash.Directives (BashDirectives (..), pBashDirectives)
+import Magix.Language.Common.Directives (Parser, pManyDirectives)
+import Magix.Language.Bash.Directives (BashDirectives (..), pBashDirective)
 import Magix.Tools (parseF, parseFContaining, parseS)
 import Test.Hspec (Spec, describe, it)
 import Prelude hiding (unlines)
@@ -33,6 +34,9 @@ multiple =
       "#!packages b c",
       "#!packages d e f"
     ]
+
+pBashDirectives :: Parser BashDirectives
+pBashDirectives = pManyDirectives pBashDirective
 
 spec :: Spec
 spec = do

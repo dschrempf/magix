@@ -17,10 +17,12 @@ where
 import Control.Monad (forM_)
 import Data.Either (isRight)
 import Data.Maybe (fromMaybe)
+import Data.List (permutations)
 import Data.Text (Text, intercalate, stripPrefix, unlines, unpack)
 import Data.Text.IO (readFile)
-import Magix.Directives (Directives (..), getDirectives, pDirectives, pLanguageDirectives, pMagixDirective, pNixpkgsDirective, pShebang)
+import Magix.Directives (Directives (..), getDirectives, pDirectiveLines, pDirectives, pMagixDirective, pNixpkgsDirective, pShebang)
 import Magix.Language.Bash.Directives (BashDirectives (..))
+import Magix.Language.Common.Directives (Parser)
 import Magix.Language.Directives (LanguageDirectives (..))
 import Magix.Language.Haskell.Directives (HaskellDirectives (..))
 import Magix.Language.Language (Language (..), getLanguageNameLowercase)
@@ -33,6 +35,10 @@ import Prelude hiding (readFile, unlines)
 
 languages :: [Language]
 languages = [minBound .. maxBound]
+
+-- | The language directives of the directive lines after the shebang.
+pLanguageDirectives :: Parser LanguageDirectives
+pLanguageDirectives = (.language) <$> pDirectiveLines
 
 pEmptyLanguageDirectivesFor :: Language -> SpecWith ()
 pEmptyLanguageDirectivesFor language =
@@ -207,22 +213,59 @@ spec = do
               ["#!/usr/bin/env \t magix\t #!magix \t bash \t"]
        in parseF pDirectives directiveNotNewlineTest
 
-    it "parses a Nixpkgs directive before language directives" $ do
-      let script :: Text =
-            unlines
-              [ "#!/usr/bin/env magix",
-                "#!nixpkgs github:NixOS/nixpkgs/nixos-unstable",
-                "#!magix bash",
-                "#!packages jq"
-              ]
+    it "parses the directives in any order" $
+      forM_ (permutations ["#!nixpkgs nixpkgs", "#!magix bash", "#!packages jq", "#!packages yq"]) $ \ls ->
+        parseS
+          pDirectives
+          (unlines $ "#!/usr/bin/env magix" : ls)
+          ( Directives
+              { nixpkgsRef = Just "nixpkgs",
+                language = BashD (BashDirectives [p | l <- ls, Just p <- [stripPrefix "#!packages " l]])
+              }
+          )
+
+    it "parses language directives before the Magix directive" $
       parseS
         pDirectives
-        script
+        (unlines ["#!/usr/bin/env magix", "#!ghcFlags -threaded", "#!magix haskell", "#!haskellPackages text"])
         ( Directives
-            { nixpkgsRef = Just "github:NixOS/nixpkgs/nixos-unstable",
-              language = BashD (BashDirectives ["jq"])
+            { nixpkgsRef = Nothing,
+              language = HaskellD (HaskellDirectives ["text"] ["-threaded"])
             }
         )
+
+    it "fails on a directive of another language before the Magix directive" $
+      parseF pDirectives $
+        unlines ["#!/usr/bin/env magix", "#!pythonPackages numpy", "#!magix bash"]
+
+    it "fails on a second Nixpkgs directive, at its line" $
+      parseFContaining
+        pDirectives
+        (unlines ["#!/usr/bin/env magix", "#!nixpkgs a", "#!magix bash", "#!nixpkgs b"])
+        "4:1:\n  |\n4 | #!nixpkgs b\n  | ^\na second #!nixpkgs directive"
+
+    it "fails on a second Magix directive, at its line" $ do
+      parseFContaining
+        pDirectives
+        (unlines ["#!/usr/bin/env magix", "#!magix bash", "#!packages jq", "#!magix bash"])
+        "4:1:\n  |\n4 | #!magix bash\n  | ^\na second #!magix directive"
+      parseFContaining
+        pDirectives
+        (unlines ["#!/usr/bin/env magix", "#!magix bash", "#!magix python"])
+        "a second #!magix directive"
+
+    it "fails on a missing Magix directive, naming it" $ do
+      parseFContaining pDirectives (unlines ["#!/usr/bin/env magix", "#!packages jq", "", "jq"]) "no #!magix directive"
+      parseFContaining pDirectives "#!/usr/bin/env magix" "no #!magix directive"
+      -- A Magix directive after a blank line is in the body.
+      parseFContaining pDirectives (unlines ["#!/usr/bin/env magix", "", "#!magix bash"]) "no #!magix directive"
+
+    it "fails on an unknown directive, naming the known ones" $
+      forM_ ["#!magix bash\n#!foo", "#!foo\n#!magix bash"] $ \ls ->
+        parseFContaining
+          pDirectives
+          ("#!/usr/bin/env magix\n" <> ls)
+          "expecting \"magix\", \"nixpkgs\", or \"packages\""
 
     it "returns Nothing for Nixpkgs reference when directive is absent" $ do
       let script :: Text =

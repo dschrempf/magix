@@ -59,6 +59,21 @@ print(xs)
 
 [Python Nix expression template](src/Magix/Language/Python/Template.nix).
 
+# Directives
+
+The shebang `#!/usr/bin/env magix` comes first. The other directives follow it
+on consecutive lines, in any order:
+
+- `#!magix <language>`, once, names the language: `bash`, `haskell` or
+  `python`.
+- `#!nixpkgs <flake reference>`, at most once, names the Nixpkgs the script
+  builds against, such as `github:NixOS/nixpkgs/nixos-unstable`, with
+  `nix build`; it overrides `--nixpkgs-path`, `--nixpkgs-ref` and
+  `MAGIX_NIXPKGS_REF`.
+- The directives of the language, as in its example above, any number of times.
+
+The script body follows the directives and does not start with `#!`.
+
 # Try
 
 Try Magix without installation on a Bash script called
